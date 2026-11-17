@@ -1,6 +1,6 @@
 import { adminPage } from "./admin.mjs";
 import { addCouponAdmin } from "./admin_coupons.mjs";
-import { changeOfferStatus, createOffer, updateOffer, importOffers, listCatalog, offerDestination } from "./catalog.mjs";
+import { catalogSummary, changeOfferStatus, createOffer, updateOffer, importOffers, listCatalog, offerDestination } from "./catalog.mjs";
 import { adminEmail, loginPage, storefrontPage, aboutPage, guidePage } from "./pages.mjs";
 import { renderGuidePage, guideSlugs } from "./guides.mjs";
 import { renderOfferPage } from "./offer_pages.mjs";
@@ -179,12 +179,7 @@ async function handleAdmin(request, url, db) {
       return result.error ? authError(result.error, result.status) : authJson(result.data);
     }
     if (path === "/api/admin/summary") {
-      const { results } = await db.prepare("SELECT status, COUNT(*) AS total FROM offers GROUP BY status").all();
-      const totals = { pending: 0, approved: 0, paused: 0 };
-      for (const row of results) {
-        if (Object.hasOwn(totals, row.status)) totals[row.status] = row.total;
-      }
-      return authJson({ total: totals.pending + totals.approved + totals.paused, ...totals });
+      return authJson(await catalogSummary(db));
     }
     if (path === "/api/admin/export") {
       const { results } = await db.prepare("SELECT id,title,category,merchant,price_cents,url,status,created_at,updated_at FROM offers ORDER BY id LIMIT 5000").all();
