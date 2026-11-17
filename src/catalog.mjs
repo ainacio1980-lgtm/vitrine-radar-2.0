@@ -12,6 +12,36 @@ export function offerDestination(value) {
   return destination;
 }
 
+// Confere a estrutura de um link de afiliado; não comprova comissão nem preço.
+export function affiliateDestinationForMarketplace(merchant, value) {
+  const url = offerDestination(value);
+  if (url.port || url.hash) throw new Error("Destino de afiliado inválido");
+  const host = url.hostname.toLowerCase();
+  const path = url.pathname;
+  let valid = false;
+  switch (merchant) {
+    case "Magalu":
+      valid = host === "www.magazinevoce.com.br" &&
+        /^\/magazinevitrineradar\/[^/]+\/p\/[a-z0-9]+\//i.test(path);
+      break;
+    case "Mercado Livre":
+      valid = host === "meli.la" && /^\/[A-Za-z0-9]{5,20}\/?$/.test(path);
+      break;
+    case "Amazon":
+      valid = (host === "www.amazon.com.br" || host === "amazon.com.br") &&
+        Boolean(url.searchParams.get("tag")?.trim()) &&
+        (/^\/dp\/[A-Za-z0-9]{10}/.test(path) || /^\/gp\/product\/[A-Za-z0-9]{10}/.test(path));
+      break;
+    case "Shopee":
+      valid = host === "s.shopee.com.br" && /^\/[A-Za-z0-9]+\/?$/.test(path);
+      break;
+    default:
+      valid = false;
+  }
+  if (!valid) throw new Error("Link não corresponde ao formato de afiliado da loja");
+  return url;
+}
+
 export async function listCatalog(db, query) {
   const filter = query.get("status");
   const page = Number(query.get("page") ?? 1);
@@ -198,9 +228,9 @@ export async function changeOfferStatus(db, actor, id, input) {
   if (offer.status !== previous) return { error: "O status mudou. Confira o catálogo e tente novamente.", status: 409 };
   if (next === "approved") {
     try {
-      offerDestination(offer.url);
+      affiliateDestinationForMarketplace(offer.merchant, offer.url);
     } catch {
-      return { error: "A oferta precisa de um link HTTPS válido para ser aprovada.", status: 422 };
+      return { error: "A oferta precisa do link oficial de afiliado da loja antes da publicação.", status: 422 };
     }
     if (!Number.isSafeInteger(offer.price_cents) || offer.price_cents <= 0) {
       return { error: "Cadastre um preço válido antes de publicar a oferta.", status: 422 };
