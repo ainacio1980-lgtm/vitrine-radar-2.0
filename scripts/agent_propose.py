@@ -16,8 +16,8 @@ prompt = (
     "Retorne SOMENTE o conteudo completo do arquivo JavaScript, sem markdown. "
     "Se nao houver correcao segura, retorne o arquivo inalterado.\n\n" + original
 )
-model = (os.environ.get("AI_MODEL") or "gemini-2.5-flash").strip()
-if model not in ("gemini-2.5-flash", "gemini-2.5-flash-lite"):
+model = (os.environ.get("AI_MODEL") or "gemini-3.5-flash-lite").strip()
+if model not in ("gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-2.5-flash-lite"):
     raise SystemExit("Modelo fora da lista gratuita permitida.")
 payload = json.dumps({
     "contents": [{"parts": [{"text": prompt}]}],
