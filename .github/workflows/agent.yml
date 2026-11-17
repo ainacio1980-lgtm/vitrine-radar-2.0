@@ -13,6 +13,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  models: read
 
 concurrency:
   group: vitrine-radar-agent
@@ -48,14 +49,12 @@ jobs:
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
-      - name: Propor melhoria isolada com provedor configuravel
+      - name: Propor melhoria isolada via GitHub Models
         id: model
         if: steps.pending.outputs.skip == 'false'
         continue-on-error: true
         env:
-          AI_API_KEY: ${{ secrets.AI_API_KEY }}
-          AI_BASE_URL: ${{ vars.AI_BASE_URL }}
-          AI_MODEL: ${{ vars.AI_MODEL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 scripts/agent_propose.py
       - name: Registrar indisponibilidade do modelo
         if: steps.model.outcome == 'failure'
