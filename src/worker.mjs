@@ -183,7 +183,7 @@ async function handleAdmin(request, url, db) {
     }
     if (path === "/api/admin/recovery" || path === "/api/admin/recovery.csv") {
       const audit = await recoveryAudit(db);
-      if (path === "/api/admin/recovery") return authJson(audit);
+      if (path === "/api/admin/recovery") return authJson({summary:audit.summary,notice:audit.notice});
       const columns = ["id","status","loja","produto","preco_centavos","foto","url_afiliado","bloqueios","apto_revisao"];
       const clean = value => {
         const s = String(value ?? "");
