@@ -7,10 +7,10 @@ from urllib.request import Request, urlopen
 target = Path("src/comparator_search.mjs")
 original = target.read_text(encoding="utf-8")
 token = os.environ.get("AI_API_KEY")
-base_url = os.environ.get("AI_BASE_URL", "").rstrip("/")
-model = os.environ.get("AI_MODEL", "")
-if not token or not base_url or not model:
-    raise SystemExit("Provedor de IA nao configurado: AI_API_KEY, AI_BASE_URL e AI_MODEL obrigatorios")
+base_url = (os.environ.get("AI_BASE_URL") or "https://api.groq.com/openai/v1").rstrip("/")
+model = os.environ.get("AI_MODEL") or "openai/gpt-oss-20b"
+if not token:
+    raise SystemExit("AI_API_KEY nao configurada; sem chamadas de IA nem cobrancas")
 if not base_url.startswith("https://"):
     raise SystemExit("AI_BASE_URL deve usar HTTPS")
 prompt = (
