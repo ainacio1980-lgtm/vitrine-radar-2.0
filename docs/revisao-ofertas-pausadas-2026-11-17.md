@@ -59,3 +59,18 @@ Distribuição completa da classificação:
 | pending | Magalu | sem classificação | 55 |
 
 A classificação `amazon_tagged` indica presença de marcação na base, não validação independente de comissão. Ausência de classificação também não prova ausência de afiliação. Revisar URLs individualmente antes de atualizar status.
+
+## Triagem por padrão de URL associado a afiliados
+
+Consulta somente leitura: entre ofertas pausadas, **30** têm padrões de URL associados a programas de afiliados (Magalu 8 `magazinevoce.com.br`, Mercado Livre 4 `meli.la`, Amazon 18 com parâmetro `tag`). Esses padrões **não comprovam** comissão, validade ou preço atual.
+
+| Loja | Pausadas com padrão | Preço positivo | Imagem cadastrada | Ambas condições |
+|---|---:|---:|---:|---:|
+| Amazon | 18 | 0 | 17 | 0 |
+| Magalu | 8 | 7 | 8 | 7 |
+| Mercado Livre | 4 | 4 | 3 | 3 |
+| **Total** | **30** | **11** | **28** | **10** |
+
+**Prioridade de validação externa: 10 ofertas pausadas** (7 Magalu e 3 Mercado Livre) com padrão de URL de afiliado, preço positivo e imagem cadastrada. As 18 Amazon continuam sem preço positivo; não reativar. Não alterar status sem verificar página, preço e atribuição de afiliado.
+
+As 80 ofertas aprovadas têm padrões de URL associados a afiliados (69 Magalu, 10 Mercado Livre, 1 Amazon), mas esse fato não confirma comissão ou funcionamento real.
