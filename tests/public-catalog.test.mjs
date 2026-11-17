@@ -6,7 +6,7 @@ const offer = (id, changes = {}) => ({
   id, title: 'Produto exemplo ' + id, category: 'Eletronicos',
   merchant: 'Magalu', price_cents: 12345,
   image_url: 'https://a-static.mlcdn.com.br/a.jpg',
-  url: 'https://www.magazineluiza.com.br/p/123',
+  url: 'https://www.magazinevoce.com.br/magazinevitrineradar/produto-exemplo/p/123456700/aa/bb/',
   ...changes,
 });
 const responder = pages => async url => {
@@ -17,7 +17,7 @@ const responder = pages => async url => {
     : { ok: false, status: 404 };
 };
 
-test('valida paginas sequenciais, imagem, preco, loja e link HTTPS', async () => {
+test('valida paginas sequenciais, foto autorizada, preco e URL de afiliado', async () => {
   const pages = {
     0: { offers: [offer(1)], count: 1, next_offset: 1 },
     1: { offers: [offer(2)], count: 1, next_offset: null },
@@ -31,6 +31,10 @@ test('rejeita cadastro publicado incompleto', async () => {
   for (const bad of [
     { image_url: null }, { price_cents: 0 }, { merchant: '' },
     { url: 'http://loja.example/item' }, { title: 'Produto \uFFFD ruim' },
+    { url: 'https://www.magazineluiza.com.br/p/123' },
+    { url: 'https://www.magazinevoce.com.br/magazineoutrapessoa/produto/p/123456700/aa/' },
+    { image_url: 'https://site-desconhecido.example/foto.jpg' },
+    { merchant: 'Shopee' },
   ]) {
     const pages = { 0: { offers: [offer(1, bad)], count: 1, next_offset: null } };
     await assert.rejects(checkCatalog('https://vitrine.example', responder(pages)));
