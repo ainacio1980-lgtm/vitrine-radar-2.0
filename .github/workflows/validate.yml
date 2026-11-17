@@ -29,14 +29,16 @@ jobs:
 
   browser-filter:
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --ipc=host
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install --no-save playwright
-      - run: npx playwright install --with-deps chromium
+      - run: npm install --no-save playwright@1.64.1
       - name: Testar clique real na sugestão em homologação
         run: node tests/staging-browser.mjs
 
