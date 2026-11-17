@@ -1,0 +1,54 @@
+name: Vitrine Radar - agente experimental de correcoes
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '43 7 * * *'
+
+permissions:
+  contents: write
+  pull-requests: write
+  models: read
+
+concurrency:
+  group: vitrine-radar-agent
+  cancel-in-progress: false
+
+jobs:
+  propose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/filtro-sugestoes
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verificar base
+        run: npm run verify
+      - name: Propor melhoria isolada com GitHub Models
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/agent_propose.py
+      - name: Validar alteracoes
+        run: npm run verify
+      - name: Abrir PR sem publicar
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- src/comparator_search.mjs; then
+            echo "Nenhuma alteracao proposta."
+            exit 0
+          fi
+          branch="agent/filtro-${GITHUB_RUN_ID}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add src/comparator_search.mjs
+          git commit -m "fix: proposta automatica de robustez do filtro"
+          git push origin "$branch"
+          gh pr create --base fix/filtro-sugestoes --head "$branch" --title "Proposta automatica: robustez do filtro" --body "Gerado por GitHub Models. Testes npm run verify executados. **Revisao humana obrigatoria. Sem deploy automatico.**"
