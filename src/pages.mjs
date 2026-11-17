@@ -227,7 +227,7 @@ elements.q.addEventListener('input',()=>{selectedOfferId=null;updateSuggestions(
 elements.q.addEventListener('focus',updateSuggestions);
 elements.q.addEventListener('keydown',event=>{if(event.key==='Escape')hideSuggestions();if(event.key==='ArrowDown'&&suggestions.style.display!=='none'){event.preventDefault();suggestions.querySelector('button')?.focus();}});
 document.addEventListener('pointerdown',event=>{if(!searchWrap.contains(event.target))hideSuggestions();});
-for (const field of [elements.q, elements.minPrice, elements.maxPrice]) {
+for (const field of [elements.minPrice, elements.maxPrice]) {
   field.addEventListener('input', render);
 }
 for (const field of [elements.cat, elements.merchant, elements.sort, elements.completeOnly]) {
