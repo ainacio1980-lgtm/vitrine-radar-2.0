@@ -52,12 +52,11 @@ jobs:
       - name: Propor melhoria isolada via GitHub Models
         id: model
         if: steps.pending.outputs.skip == 'false'
-        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 scripts/agent_propose.py
       - name: Registrar indisponibilidade do modelo
-        if: steps.model.outcome == 'failure'
+        if: failure() && steps.model.outcome == 'failure'
         run: echo "::warning::Provedor de IA nao configurado, indisponivel ou proposta rejeitada; execucao preservada sem alteracao."
       - name: Validar alteracoes
         if: steps.pending.outputs.skip == 'false' && steps.model.outcome == 'success'
