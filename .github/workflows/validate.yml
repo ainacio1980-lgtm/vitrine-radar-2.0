@@ -1,12 +1,10 @@
 name: Validate Vitrine Radar
 on:
   push:
-    branches: [main, fix/filtro-sugestoes]
+    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
-  schedule:
-    - cron: '17 */6 * * *'
 permissions:
   contents: read
 jobs:
@@ -17,6 +15,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - run: python3 -m py_compile scripts/agent_propose.py
       - run: npm run verify
 
   staging-smoke:
