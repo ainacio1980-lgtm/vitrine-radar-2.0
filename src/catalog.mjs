@@ -20,7 +20,7 @@ export async function listCatalog(db, query) {
   }
 
   const offset = (page - 1) * pageSize;
-  const fields = "id, title, category, merchant, price_cents, status, url, updated_at";
+  const fields = "id, title, category, merchant, price_cents, status, url, updated_at, (SELECT image_url FROM product_images WHERE offer_id = offers.id ORDER BY sort_order, id LIMIT 1) AS image_url";
   const order = "ORDER BY updated_at DESC, id DESC LIMIT ? OFFSET ?";
   const statement = filter
     ? db.prepare(`SELECT ${fields} FROM offers WHERE status = ? ${order}`).bind(filter, pageSize + 1, offset)
@@ -38,6 +38,12 @@ export async function createOffer(db, actor, input) {
   }
   if (!Number.isSafeInteger(input.price_cents) || input.price_cents < 0) {
     return { error: "Informe um preço válido em reais.", status: 400 };
+  }
+
+  const providedImage = typeof input.image_url === "string" ? input.image_url.trim() : "";
+  const imageUrl = providedImage ? safeProductImageUrl(providedImage) : null;
+  if (providedImage && !imageUrl) {
+    return { error: "Informe uma foto HTTPS de uma fonte confiável.", status: 400 };
   }
 
   let link;
@@ -59,6 +65,11 @@ export async function createOffer(db, actor, input) {
       INSERT INTO admin_events (actor_email, event_type, offer_id, details)
       SELECT ?, 'offer_created', last_insert_rowid(), 'pending' WHERE changes() = 1
     `).bind(actor),
+    db.prepare(`
+      INSERT INTO product_images (offer_id, image_url, sort_order)
+      SELECT o.id, ?, 0 FROM offers o
+      WHERE o.url = ? AND ? <> '' AND changes() = 1
+    `).bind(imageUrl || "", link, imageUrl || ""),
   ]);
   if (result.meta.changes === 0) {
     return { error: "Já existe uma oferta com esse link. Confira o catálogo.", status: 409 };
@@ -116,6 +127,12 @@ export async function updateOffer(db, actor, id, input) {
   if (!Number.isSafeInteger(input.price_cents) || input.price_cents < 0) {
     return { error: "Informe um preço válido em reais.", status: 400 };
   }
+  const providedImage = typeof input.image_url === "string" ? input.image_url.trim() : "";
+  const imageUrl = providedImage ? safeProductImageUrl(providedImage) : null;
+  if (providedImage && !imageUrl) {
+    return { error: "Informe uma foto HTTPS de uma fonte confiável.", status: 400 };
+  }
+
   let link;
   try {
     if (typeof input.url !== "string" || input.url.length > 2048) throw Error();
@@ -124,18 +141,19 @@ export async function updateOffer(db, actor, id, input) {
   } catch {
     return { error: "Informe um link HTTPS válido para a oferta.", status: 400 };
   }
-  const keys = ["title", "category", "merchant", "price_cents", "url", "status"];
+  const keys = ["title", "category", "merchant", "price_cents", "url", "status", "image_url"];
   const prior = input.previous;
   if (!prior || typeof prior !== "object" || Array.isArray(prior)) {
     return { error: "Recarregue o catálogo antes de editar.", status: 400 };
   }
-  const current = await db.prepare("SELECT id, title, category, merchant, price_cents, url, status FROM offers WHERE id = ?").bind(id).first();
+  const current = await db.prepare("SELECT id, title, category, merchant, price_cents, url, status, (SELECT image_url FROM product_images WHERE offer_id = offers.id ORDER BY sort_order, id LIMIT 1) AS image_url FROM offers WHERE id = ?").bind(id).first();
   if (!current) return { error: "Oferta não encontrada.", status: 404 };
   if (keys.some(key => current[key] !== prior[key])) {
     return { error: "A oferta foi alterada. Atualize o catálogo e tente novamente.", status: 409 };
   }
+  const changedImage = imageUrl !== null && imageUrl !== current.image_url;
   if (title === current.title && category === current.category && merchant === current.merchant &&
-      input.price_cents === current.price_cents && link === current.url) {
+      input.price_cents === current.price_cents && link === current.url && !changedImage) {
     return { data: { status: current.status, unchanged: true } };
   }
   const duplicate = await db.prepare("SELECT id FROM offers WHERE url = ? AND id <> ?").bind(link, id).first();
@@ -155,6 +173,15 @@ export async function updateOffer(db, actor, id, input) {
   }
   if (current.price_cents !== input.price_cents) {
     await db.prepare("INSERT INTO offer_price_history (offer_id, price_cents) VALUES (?, ?)").bind(id, input.price_cents).run();
+  }
+  if (changedImage) {
+    const imageUpdate = await db.prepare(
+      "UPDATE product_images SET image_url = ? WHERE id = (SELECT id FROM product_images WHERE offer_id = ? ORDER BY sort_order, id LIMIT 1)"
+    ).bind(imageUrl, id).run();
+    if (imageUpdate.meta.changes === 0) {
+      await db.prepare("INSERT INTO product_images (offer_id, image_url, sort_order) VALUES (?, ?, 0)")
+        .bind(id, imageUrl).run();
+    }
   }
   return { data: { status: "pending", updated: true } };
 }
