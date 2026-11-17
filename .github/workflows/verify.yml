@@ -26,7 +26,7 @@ jobs:
       - name: Obter codigo de homologacao
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'push' || github.event_name == 'pull_request' && github.ref || 'fix/filtro-sugestoes' }}
+          ref: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'fix/filtro-sugestoes' || github.sha }}
       - name: Configurar Node
         uses: actions/setup-node@v4
         with:
