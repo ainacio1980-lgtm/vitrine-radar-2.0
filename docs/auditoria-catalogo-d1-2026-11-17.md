@@ -39,3 +39,27 @@ SELECT status, COUNT(*) AS n,
  ) THEN 1 ELSE 0 END) AS imaged
 FROM offers GROUP BY status ORDER BY status;
 ```
+
+## Auditoria complementar — comparação entre lojas
+
+Consulta de produção: **zero títulos normalizados por minúsculas e espaços nas pontas com aprovação em mais de um marketplace**. Isso não descarta equivalência de produtos com títulos diferentes. Comparação confiável exige identificador de produto/modelo, configuração e atributos, não apenas texto do título.
+
+Ofertas pausadas com preço positivo e imagem cadastrada, candidatas a revisão manual:
+
+| Marketplace | Candidatas |
+|---|---:|
+| Magalu | 21 |
+| Mercado Livre | 10 |
+| Shopee | 18 |
+| **Total** | **49** |
+
+Nenhuma dessas 49 ofertas foi reativada. A revisão deve verificar preço atualizado, disponibilidade, imagem acessível, link de afiliado válido e correspondência exata do produto.
+
+```sql
+SELECT merchant, COUNT(*) AS paused_with_price_and_image
+FROM offers o
+WHERE status='paused' AND price_cents>0
+ AND EXISTS (SELECT 1 FROM product_images i
+             WHERE i.offer_id=o.id AND trim(i.image_url)<>'')
+GROUP BY merchant;
+```
