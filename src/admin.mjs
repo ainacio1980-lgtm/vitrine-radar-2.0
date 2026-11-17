@@ -71,6 +71,19 @@ export function adminPage(csrf) {
     <p id="goal-progress-label" class="muted" role="status">Calculando progresso...</p>
   </section>
 
+  <section class="card" aria-labelledby="recovery-title">
+    <h2 id="recovery-title">Fila de recuperação do catálogo</h2>
+    <p class="muted">Triagem das ofertas pausadas e pendentes. Identifica falta de foto, preço e formato de link de afiliado. A revisão não comprova preço atual, estoque ou comissão.</p>
+    <div class="metrics" aria-label="Pendências do catálogo">
+      <span>Sem bloqueios estruturais: <strong id="recovery-ready">—</strong></span>
+      <span>Precisam de foto: <strong id="recovery-photo">—</strong></span>
+      <span>Precisam de preço: <strong id="recovery-price">—</strong></span>
+      <span>Precisam de link afiliado: <strong id="recovery-link">—</strong></span>
+    </div>
+    <p><a href="/api/admin/recovery.csv" download>Baixar relatório de recuperação em CSV</a></p>
+    <p class="muted">Antes de aprovar qualquer oferta, confirme manualmente preço, disponibilidade, modelo e elegibilidade do link no programa da loja.</p>
+  </section>
+
   <section class="card" aria-labelledby="new-title">
     <h2 id="new-title">Cadastrar oferta</h2>
     <p class="muted">A oferta fica pendente até você aprová-la para a vitrine.</p>
@@ -657,6 +670,13 @@ export function adminPage(csrf) {
           ' ofertas publicadas de ' + target + ' (' +
           Math.min(100, ((Number(data.approved) || 0) / target) * 100).toFixed(1).replace('.', ',') +
           '%). Faltam ' + Math.max(0, Number(data.remaining) || 0) + ' ofertas validadas.';
+      }),
+      api('/api/admin/recovery').then(data => {
+        const totals = data.summary;
+        byId('recovery-ready').textContent = totals.ready_for_review;
+        byId('recovery-photo').textContent = totals.missing_photo;
+        byId('recovery-price').textContent = totals.missing_price;
+        byId('recovery-link').textContent = totals.invalid_affiliate_link;
       }),
       api('/api/admin/operations').then(data => {
         for (const key of ['clicks', 'imports', 'jobs']) byId(key).textContent = data[key];
