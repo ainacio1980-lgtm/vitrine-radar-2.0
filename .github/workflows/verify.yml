@@ -1,0 +1,41 @@
+name: Vitrine Radar - verificacao automatica
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '43 */6 * * *'
+  push:
+    branches:
+      - fix/filtro-sugestoes
+  pull_request:
+    branches:
+      - fix/filtro-sugestoes
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vitrine-radar-verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Obter codigo de homologacao
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'push' || github.event_name == 'pull_request' && github.ref || 'fix/filtro-sugestoes' }}
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Diagnosticar ambiente
+        run: |
+          node --version
+          npm --version
+          git rev-parse --short HEAD
+          test -f package.json
+      - name: Executar verificacoes
+        run: npm run verify
