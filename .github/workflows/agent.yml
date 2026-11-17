@@ -1,0 +1,143 @@
+name: Vitrine Radar - agente de correcoes (Gemini opcional)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - fix/filtro-sugestoes
+  pull_request:
+    branches:
+      - main
+      - fix/filtro-sugestoes
+  schedule:
+    - cron: '17 */6 * * *'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: vitrine-radar-agent
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # A main guarda a orquestracao; o codigo testavel esta na branch de homologacao.
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/filtro-sugestoes
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validar sintaxe e testes
+        run: npm run verify
+
+  verify_homologation:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verificar saude da homologacao Cloudflare
+        run: curl --fail --show-error --silent --location --max-time 20 --retry 2 'https://vitrine-radar-filter-staging.ainacio1980-financas.workers.dev/api/health'
+
+  propose:
+    needs: [verify, verify_homologation]
+    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout da branch de homologacao
+        uses: actions/checkout@v4
+        with:
+          ref: fix/filtro-sugestoes
+          persist-credentials: true
+      - name: Obter controlador de IA atualizado da main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: agent-control
+          persist-credentials: false
+      - name: Validar sintaxe do controlador
+        run: python3 -m py_compile agent-control/scripts/agent_propose.py
+      - name: Preparar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verificar base antes da proposta
+        run: npm run verify
+      - name: Evitar propostas duplicadas
+        id: pending
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          count=$(gh pr list --base fix/filtro-sugestoes --state open --json number,title --jq '[.[] | select(.title == "Proposta automatica: robustez do filtro")] | length')
+          if [ "$count" -gt 0 ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Existe proposta pendente; nao criar duplicata."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Verificar configuracao gratuita de IA
+        id: provider
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        shell: bash
+        run: |
+          if [ -n "$GEMINI_API_KEY" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::IA pausada: adicione GEMINI_API_KEY de uma conta no plano gratuito. Os testes continuam; nenhuma chamada paga sera feita."
+          fi
+      - name: Corrigir e testar automaticamente (ate 3 tentativas)
+        id: model
+        if: steps.pending.outputs.skip == 'false' && steps.provider.outputs.enabled == 'true'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          AI_MODEL: ${{ vars.AI_MODEL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            echo "::group::Tentativa $attempt de 3"
+            git restore -- src/comparator_search.mjs
+            if python3 agent-control/scripts/agent_propose.py && npm run verify; then
+              echo "Proposta validada pelos testes."
+              echo "::endgroup::"
+              exit 0
+            fi
+            echo "::warning::Tentativa $attempt falhou; restaurando arquivo antes da proxima."
+            echo "::endgroup::"
+          done
+          git restore -- src/comparator_search.mjs
+          echo "::error::Agente nao produziu proposta valida apos 3 tentativas."
+          exit 1
+      - name: Registrar falha do agente
+        if: failure() && steps.model.outcome == 'failure'
+        run: echo "::warning::Agente falhou apos tentativas limitadas; nenhuma alteracao sera publicada."
+      - name: Abrir PR sem publicar
+        if: steps.pending.outputs.skip == 'false' && steps.model.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- src/comparator_search.mjs; then
+            echo "Nenhuma alteracao proposta."
+            exit 0
+          fi
+          branch="agent/filtro-${GITHUB_RUN_ID}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add src/comparator_search.mjs
+          git commit -m "fix: proposta automatica de robustez do filtro"
+          git push origin "$branch"
+          gh pr create --base fix/filtro-sugestoes --head "$branch" --title "Proposta automatica: robustez do filtro" --body "Gerado pelo agente de IA configurado. Testes npm run verify executados. Revisao obrigatoria. Sem deploy automatico."
