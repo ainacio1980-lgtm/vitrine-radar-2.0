@@ -1,6 +1,6 @@
 import { adminPage } from "./admin.mjs";
 import { addCouponAdmin } from "./admin_coupons.mjs";
-import { catalogSummary, changeOfferStatus, createOffer, updateOffer, importOffers, listCatalog, offerDestination } from "./catalog.mjs";
+import { catalogSummary, changeOfferStatus, createOffer, updateOffer, importOffers, importPendingPhotos, listCatalog, offerDestination } from "./catalog.mjs";
 import { adminEmail, loginPage, storefrontPage, aboutPage, guidePage } from "./pages.mjs";
 import { renderGuidePage, guideSlugs } from "./guides.mjs";
 import { renderOfferPage } from "./offer_pages.mjs";
@@ -181,6 +181,24 @@ async function handleAdmin(request, url, db) {
     if (path === "/api/admin/summary") {
       return authJson(await catalogSummary(db));
     }
+    if (path === "/api/admin/photos/missing.csv") {
+      const { results } = await db.prepare(
+        "SELECT o.id,o.title,o.merchant,o.url FROM offers o " +
+        "WHERE o.status='pending' AND NOT EXISTS (SELECT 1 FROM product_images i WHERE i.offer_id=o.id) " +
+        "ORDER BY o.id LIMIT 500"
+      ).all();
+      const escapeCsv = value => {
+        const text = String(value ?? "");
+        const safe = /^[=+@-]/.test(text) ? "'" + text : text;
+        return '"' + safe.replaceAll('"','""') + '"';
+      };
+      const rows = ["id;produto;loja;link;foto"].concat(results.map(o =>
+        [o.id, o.title, o.merchant, o.url, ""].map(escapeCsv).join(";")
+      ));
+      const csv = String.fromCharCode(65279) + rows.join("\r\n") + "\r\n";
+      return new Response(csv,{headers:{...authHeaders,"content-type":"text/csv; charset=utf-8",
+        "content-disposition":'attachment; filename="vitrine-radar-pendentes-sem-foto.csv"'}});
+    }
     if (path === "/api/admin/export") {
       const { results } = await db.prepare("SELECT id,title,category,merchant,price_cents,url,status,created_at,updated_at FROM offers ORDER BY id LIMIT 5000").all();
       const columns = ["id","title","category","merchant","price_cents","url","status","created_at","updated_at"];
@@ -272,10 +290,11 @@ async function handleAdmin(request, url, db) {
   const addingLink = path === "/api/admin/link-inbox" && request.method === "POST";
   const addingComparisonQuotes = path === "/api/admin/compare/quotes" && request.method === "POST";
   const importing = path === "/api/admin/import" && request.method === "POST";
+  const importingPhotos = path === "/api/admin/photos/import" && request.method === "POST";
   const creating = path === "/api/admin/offers" && request.method === "POST";
   const changing = statusPath && request.method === "PATCH";
   const editing = editPath && request.method === "PUT";
-  if (!creating && !changing && !editing && !importing && !addingLink && !savingShopee &&
+  if (!creating && !changing && !editing && !importing && !importingPhotos && !addingLink && !savingShopee &&
       !notingReview && !addingComparisonQuotes && !publishingCoupon && !expiringCoupon) return authError("Método inválido.", 405);
   if (request.headers.get("origin") !== url.origin || !same(request.headers.get("x-csrf-token") || "", session.csrf)) {
     return authError("Atualize o painel e tente novamente.", 403);
@@ -289,7 +308,7 @@ async function handleAdmin(request, url, db) {
 
   let body;
   try {
-    body = await readJson(request, importing || addingComparisonQuotes ? 128 * 1024 : 8192);
+    body = await readJson(request, importing || importingPhotos || addingComparisonQuotes ? 128 * 1024 : 8192);
   } catch {
     return authError("Solicitação inválida.", 400);
   }
@@ -355,7 +374,7 @@ async function handleAdmin(request, url, db) {
     if (!inserted.meta.changes) return authError("Esse link já foi guardado.", 409);
     return authJson({ ok: true, status: "pending" }, 201);
   }
-  const result = importing ? await importOffers(db, session.email, body) : creating ? await createOffer(db, session.email, body) : editing ? await updateOffer(db, session.email, id, body) : await changeOfferStatus(db, session.email, id, body);
+  const result = importingPhotos ? await importPendingPhotos(db, session.email, body) : importing ? await importOffers(db, session.email, body) : creating ? await createOffer(db, session.email, body) : editing ? await updateOffer(db, session.email, id, body) : await changeOfferStatus(db, session.email, id, body);
   if (!result.error && creating && typeof body.url === "string") {
     try { await db.prepare("UPDATE affiliate_link_inbox SET status = 'used' WHERE url = ?").bind(new URL(body.url.trim()).href).run(); } catch {}
   }
