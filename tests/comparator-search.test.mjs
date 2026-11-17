@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import vm from 'node:vm';
 import { normalizeProductSearch, productSearchTerms } from '../src/comparator_search.mjs';
 
 test('normalização não depende de maiúsculas e acentos', () => {
@@ -36,4 +37,14 @@ test('prefixo parcial de nome continua permitindo digitação progressiva', () =
 test('entrada vazia ou nula não gera exceção', () => {
   assert.equal(normalizeProductSearch(null), '');
   assert.equal(productSearchTerms(''), null);
+});
+
+test('funções de busca funcionam no script isolado que a página injeta', () => {
+  const script =
+    'const normalizeProductSearch = ' + normalizeProductSearch.toString() + ';' +
+    'const productSearchTerms = ' + productSearchTerms.toString() + ';' +
+    'productSearchTerms("Poco X8 Pro 8GB 256GB preto");';
+  const terms = vm.runInNewContext(script);
+  assert.ok(Array.from(terms.prefixes).includes(' x8 '));
+  assert.ok(Array.from(terms.prefixes).includes(' 256gb '));
 });
