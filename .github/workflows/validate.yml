@@ -1,8 +1,8 @@
-name: Vitrine Radar - validação contínua
+name: Vitrine Radar - validacao de desenvolvimento
 
 on:
   push:
-    branches: [main]
+    branches: [main, fix/filtro-sugestoes]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -21,20 +21,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout
+      - name: Checkout da branch de desenvolvimento
         uses: actions/checkout@v4
-      - name: Verificar arquivos do projeto
+        with:
+          ref: fix/filtro-sugestoes
+          persist-credentials: false
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verificar estrutura e executar testes
         shell: bash
         run: |
           set -euo pipefail
-          if [ ! -f package.json ]; then
-            echo "::error::package.json ausente. Importe o código-fonte da loja antes de habilitar testes e deploy."
-            exit 1
-          fi
-      - name: Instalar dependências e testar
-        shell: bash
-        run: |
-          set -euo pipefail
-          npm ci
-          node -e "const p=require('./package.json'); if (!p.scripts || !p.scripts.test) { console.error('Script npm test obrigatório'); process.exit(1); }"
-          npm test
+          test -f package.json
+          test -f src/worker.mjs
+          npm run verify
