@@ -284,3 +284,47 @@ export async function catalogSummary(db) {
     pending_without_photo: Number(missing?.total) || 0,
   };
 }
+
+/**
+ * Atualiza somente fotos faltantes de ofertas pendentes.
+ * Nenhum preco, link ou status e alterado e nenhuma oferta e publicada.
+ */
+export async function importPendingPhotos(db, actor, input) {
+  if (!input || !Array.isArray(input.rows) || input.rows.length < 1 || input.rows.length > 50) {
+    return { error: "Envie de 1 a 50 fotos por lote.", status: 400 };
+  }
+  const unique = new Set();
+  const normalized = [];
+  for (const row of input.rows) {
+    if (!row || typeof row !== "object" || Array.isArray(row) ||
+        !Number.isSafeInteger(row.id) || row.id < 1 || unique.has(row.id) ||
+        typeof row.image_url !== "string" || row.image_url.length > 2048) {
+      return { error: "Lote contém IDs repetidos ou dados inválidos.", status: 400 };
+    }
+    const url = safeProductImageUrl(row.image_url.trim());
+    if (!url) return { error: "Use foto HTTPS de domínio de imagens autorizado.", status: 400 };
+    unique.add(row.id);
+    normalized.push({ id: row.id, image_url: url });
+  }
+
+  let added = 0;
+  let skipped = 0;
+  const errors = [];
+  for (const row of normalized) {
+    const result = await db.prepare(
+      "INSERT INTO product_images (offer_id, image_url, sort_order) " +
+      "SELECT o.id, ?, 0 FROM offers o WHERE o.id = ? AND o.status = 'pending' " +
+      "AND NOT EXISTS (SELECT 1 FROM product_images i WHERE i.offer_id = o.id)"
+    ).bind(row.image_url, row.id).run();
+    if (result.meta.changes === 1) {
+      added++;
+      await db.prepare(
+        "INSERT INTO admin_events (actor_email,event_type,offer_id,details) VALUES (?,'offer_photo_imported',?,'pending: foto registrada sem aprovar')"
+      ).bind(actor,row.id).run();
+    } else {
+      skipped++;
+      errors.push({id:row.id,reason:"Oferta nao pendente ou ja possui foto."});
+    }
+  }
+  return { data: { received: normalized.length, added, skipped, errors, note: "Fotos adicionadas; aprovação ainda exige revisão e link de afiliado válido." } };
+}
