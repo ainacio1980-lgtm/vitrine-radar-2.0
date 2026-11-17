@@ -1,4 +1,6 @@
 // Read-only public catalog audit. Never tests retailer URLs or changes offers.
+import { affiliateDestinationForMarketplace } from '../src/catalog.mjs';
+import { safeProductImageUrl } from '../src/product_images.mjs';
 export async function checkCatalog(origin, fetcher = fetch) {
   const base = new URL(origin);
   if (base.protocol !== 'https:') throw new Error('Catalogo requer HTTPS');
@@ -29,12 +31,13 @@ export async function checkCatalog(origin, fetcher = fetch) {
       if (!Number.isSafeInteger(offer.price_cents) || offer.price_cents <= 0) {
         throw new Error('Preco ausente: ' + id);
       }
-      for (const field of ['image_url', 'url']) {
-        try {
-          if (new URL(offer[field]).protocol !== 'https:') throw Error();
-        } catch {
-          throw new Error('Campo ' + field + ' ausente/invalido: ' + id);
-        }
+      if (!safeProductImageUrl(offer.image_url)) {
+        throw new Error('Foto fora de dominio HTTPS autorizado: ' + id);
+      }
+      try {
+        affiliateDestinationForMarketplace(offer.merchant, offer.url);
+      } catch {
+        throw new Error('Link de afiliado invalido para a loja: ' + id);
       }
     }
     if (json.next_offset === null) {
