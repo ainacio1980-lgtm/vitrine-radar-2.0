@@ -65,3 +65,21 @@ test('o agente agenda inferencia local gratuita mesmo sem chave Gemini', () => {
   assert.match(python, /qwen2\.5-coder:1\.5b/);
   assert.doesNotMatch(yaml, /wrangler deploy|auto-merge|gh pr merge/);
 });
+
+test('agente alterna responsabilidades com travas e evita cancelamentos por pushes', () => {
+  const yaml=workflow('agent.yml');
+  const verify=workflow('validate.yml');
+  const controller=readFileSync(new URL('../scripts/agent_propose.py',import.meta.url),'utf8');
+  assert.match(yaml, /cancel-in-progress: false/);
+  assert.match(yaml, /agent_propose\.py --choose "\$GITHUB_RUN_NUMBER"/);
+  assert.match(yaml, /AI_TARGET: \$\{\{ steps\.task\.outputs\.path \}\}/);
+  assert.match(yaml, /git restore -- "\$AI_TARGET"/);
+  assert.match(yaml, /git add -- "\$AI_TARGET"/);
+  assert.match(yaml, /gh pr list --base main --state open --json headRefName/);
+  assert.match(controller, /"src\/product_images\.mjs"/);
+  assert.match(controller, /"src\/comparator_search\.mjs"/);
+  assert.match(controller, /"scripts\/check-public-catalog\.mjs"/);
+  assert.match(controller, /validate_proposal/);
+  assert.match(verify, /python3 -m unittest discover/);
+  assert.doesNotMatch(yaml, /gh pr merge|wrangler deploy/);
+});
