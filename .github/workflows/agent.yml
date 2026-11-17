@@ -50,6 +50,7 @@ jobs:
         run: npm run verify
 
   propose:
+    needs: verify
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
