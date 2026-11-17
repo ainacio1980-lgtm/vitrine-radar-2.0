@@ -1,5 +1,4 @@
-name: Vitrine Radar - validacao de desenvolvimento
-
+name: Validate Vitrine Radar
 on:
   push:
     branches: [main, fix/filtro-sugestoes]
@@ -8,32 +7,36 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '17 */6 * * *'
-
 permissions:
   contents: read
-
-concurrency:
-  group: vitrine-radar-validation-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  validate:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm run verify
+
+  staging-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Verificar disponibilidade real do staging
+        run: |
+          curl --fail --show-error --silent --location --max-time 20 --retry 2 \
+            'https://vitrine-radar-filter-staging.ainacio1980-financas.workers.dev/api/health'
+
+  browser-filter:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout da branch de desenvolvimento
-        uses: actions/checkout@v4
-        with:
-          ref: fix/filtro-sugestoes
-          persist-credentials: false
-      - name: Configurar Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Verificar estrutura e executar testes
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -f package.json
-          test -f src/worker.mjs
-          npm run verify
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Testar clique real na sugestão em homologação
+        run: node tests/staging-browser.mjs

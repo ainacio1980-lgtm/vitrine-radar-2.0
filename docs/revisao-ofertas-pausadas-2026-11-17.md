@@ -1,0 +1,85 @@
+# Revisão prioritária de ofertas pausadas — 17/11/2026
+
+Fonte: consulta somente leitura ao D1 de produção. **Nenhuma oferta foi reativada.** Preços abaixo são valores armazenados, não preços atuais verificados.
+
+## Primeiro par candidato à comparação entre lojas
+
+| ID | Loja | Título armazenado | Preço armazenado | Status |
+|---|---|---|---:|---|
+| 32 | Mercado Livre | Tapete higiênico Chalesco para cães 60 × 55 cm — 30 unidades | R$ 69,90 | paused |
+| 36 | Shopee | Tapete higiênico Chalesco para cães — 30 unidades | R$ 84,55 | paused |
+
+**Importante:** ainda não está comprovado que são o mesmo produto. O anúncio Shopee não informa dimensões no título. Conferir fabricante, dimensões, unidades, SKU/EAN, disponibilidade, URL afiliada e preço atual antes de comparar ou ativar. A diferença de R$ 14,65 é apenas entre preços armazenados, não economia real.
+
+## Candidatos de revisão por loja
+
+- Magalu: 21 pausados com preço positivo e imagem cadastrada (IDs 1,3,4,5,6,7,8,25,26,27,28,50–59).
+- Mercado Livre: 10 (IDs 9,14,31,32,62,64,84,85,111,160).
+- Shopee: 18 (IDs 17,18,19,33,34,36,37,38,70–79).
+
+## Sequência segura
+
+1. Validar a URL original e a afiliação; não substituir por link genérico.
+2. Verificar a imagem de fato carregada e correspondente ao produto.
+3. Validar preço atual, estoque, voltagem, capacidade, quantidade e modelo.
+4. Só então propor aprovação, com evidências. Não alterar status em massa.
+5. Comparação entre marketplaces somente com equivalência demonstrada.
+
+A homologação contém alguns IDs que também existem pausados em produção; bancos são independentes. Nunca inferir status de produção a partir da homologação.
+
+## Resultado da inspeção dos links e das validações armazenadas
+
+Consulta D1 de produção dos IDs 32 (Mercado Livre) e 36 (Shopee):
+
+- `offer_link_meta.kind = retailer_direct` nos dois anúncios; a última revisão registrada é de 14/11/2026. **Não há confirmação de afiliação**.
+- Validação `merchant_link_format_db_20261117`: **reprovada** para o ID 32; **aprovada** para o ID 36. Isso verifica formato, não comissão.
+- Validações de domínio da loja, URL HTTPS, imagem HTTPS, imagem presente e preço positivo foram aprovadas no banco para ambos, mas não comprovam que o recurso remoto carregue atualmente.
+- `offer_quality_checks`: nenhuma linha encontrada para esses dois IDs.
+- URL do ID 32 aponta diretamente para `www.mercadolivre.com.br`; URL do ID 36 aponta diretamente para `shopee.com.br`. Nenhuma das duas foi demonstrada como link rastreado de afiliado.
+
+**Decisão:** manter ambos pausados. Solicitar ou recuperar URLs de afiliado comprovadas e confirmar dimensões do produto Shopee, preços e estoque antes de eventual comparação/publicação. Não inventar links nem inferir comissão.
+
+## Auditoria agregada de classificação de links
+
+Consulta D1 de produção (somente leitura): entre as **49** ofertas pausadas com preço positivo e imagem cadastrada, **39** possuem `offer_link_meta.kind = retailer_direct` e **10** não possuem classificação registrada. Nenhuma das duas categorias comprova rastreamento de afiliado.
+
+Distribuição completa da classificação:
+
+| Status | Loja | Classificação | Quantidade |
+|---|---|---|---:|
+| approved | Amazon | amazon_tagged | 1 |
+| approved | Magalu | sem classificação | 69 |
+| approved | Mercado Livre | sem classificação | 10 |
+| paused | Amazon | amazon_tagged | 18 |
+| paused | Magalu | retailer_direct | 14 |
+| paused | Magalu | sem classificação | 8 |
+| paused | Mercado Livre | retailer_direct | 19 |
+| paused | Mercado Livre | sem classificação | 4 |
+| paused | Shopee | retailer_direct | 19 |
+| pending | Magalu | sem classificação | 55 |
+
+A classificação `amazon_tagged` indica presença de marcação na base, não validação independente de comissão. Ausência de classificação também não prova ausência de afiliação. Revisar URLs individualmente antes de atualizar status.
+
+## Triagem por padrão de URL associado a afiliados
+
+Consulta somente leitura: entre ofertas pausadas, **30** têm padrões de URL associados a programas de afiliados (Magalu 8 `magazinevoce.com.br`, Mercado Livre 4 `meli.la`, Amazon 18 com parâmetro `tag`). Esses padrões **não comprovam** comissão, validade ou preço atual.
+
+| Loja | Pausadas com padrão | Preço positivo | Imagem cadastrada | Ambas condições |
+|---|---:|---:|---:|---:|
+| Amazon | 18 | 0 | 17 | 0 |
+| Magalu | 8 | 7 | 8 | 7 |
+| Mercado Livre | 4 | 4 | 3 | 3 |
+| **Total** | **30** | **11** | **28** | **10** |
+
+**Prioridade de validação externa: 10 ofertas pausadas** (7 Magalu e 3 Mercado Livre) com padrão de URL de afiliado, preço positivo e imagem cadastrada. As 18 Amazon continuam sem preço positivo; não reativar. Não alterar status sem verificar página, preço e atribuição de afiliado.
+
+As 80 ofertas aprovadas têm padrões de URL associados a afiliados (69 Magalu, 10 Mercado Livre, 1 Amazon), mas esse fato não confirma comissão ou funcionamento real.
+
+## Lote operacional prioritário — IDs confirmados no D1
+
+- **Magalu:** 1 (Samsung Galaxy A07), 3 (potes PRATICASA), 4 (notebook Multi Ultra), 5 (Air Fryer Philco), 6 (geladeira Midea), 7 (micro-ondas Electrolux), 8 (JBL Tune 530BT).
+- **Mercado Livre:** 9 (kit camisetas Zaroc; `https://meli.la/1mL4P2k`), 111 (balança SF-400; `https://meli.la/1NJZGKd`), 160 (mouse sem fio amarelo; `https://meli.la/2LR7UtV`).
+
+Os 7 URLs Magalu seguem o caminho `www.magazinevoce.com.br/magazinevitrineradar/`, consistente com a vitrine, mas sem prova de comissão ativa. Os três URLs Mercado Livre usam o encurtador `meli.la`. Os 10 permanecem `paused`. Os preços estão armazenados e podem estar desatualizados; nenhuma validação HTTP de destino ou preço foi feita nesta etapa.
+
+**Não alterar status ou preços** sem validação independente. Preservar os links originais de afiliados, não substituir por URLs diretas do varejista.

@@ -1,0 +1,36 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+const source = readFileSync(new URL('../src/pages.mjs', import.meta.url), 'utf8');
+
+test('suggestion click selects offer and refreshes results', () => {
+  assert.match(source, /item\.addEventListener\('click',selectOffer\)/);
+  assert.match(source, /selectedOfferId=offer\.id;elements\.q\.value=offer\.title/);
+  assert.match(source, /hideSuggestions\(\);render\(\)/);
+});
+test('suggestion selection resets conflicting filters', () => {
+  for (const fragment of [
+    "elements.cat.value=''",
+    "elements.merchant.value=''",
+    "elements.minPrice.value=''",
+    "elements.maxPrice.value=''",
+    "elements.completeOnly.checked=false"
+  ]) assert.ok(source.includes(fragment), 'Missing reset: ' + fragment);
+});
+test('native suggestion button does not have duplicate keydown activation', () => {
+  assert.match(source, /item\.type='button'/);
+  assert.doesNotMatch(source, /item\.addEventListener\('keydown'/);
+});
+
+test('IDs numéricos e textuais são comparados sem perder a seleção', () => {
+  assert.match(source, /selectedOfferId !== null \? String\(product\.id\) === String\(selectedOfferId\)/);
+  assert.equal(String(123), String('123'));
+  assert.notEqual(String(123), String('124'));
+});
+
+test('campo de busca tem apenas um listener de input que atualiza os resultados', () => {
+  assert.equal((source.match(/elements\.q\.addEventListener\('input'/g) || []).length, 1);
+  assert.match(source, /for \(const field of \[elements\.minPrice, elements\.maxPrice\]\)/);
+  assert.doesNotMatch(source, /for \(const field of \[elements\.q, elements\.minPrice, elements\.maxPrice\]\)/);
+});
