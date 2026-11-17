@@ -35,3 +35,17 @@ test('testes completos seguem automatizados e verificacao avulsa nao duplica', (
   assert.doesNotMatch(manual, /schedule:|fix\/filtro-sugestoes/);
   assert.match(manual, /ref: main/);
 });
+
+test('incidentes de monitoramento sao registrados e fechados com verificacoes reais', () => {
+  const yaml = workflow('monitor.yml');
+  assert.match(yaml, /issues: write/);
+  assert.match(yaml, /branches: \[main\]/);
+  assert.match(yaml, /if: failure\(\)/);
+  assert.match(yaml, /if: success\(\)/);
+  assert.match(yaml, /gh issue create --title/);
+  assert.match(yaml, /gh issue close "\$existing"/);
+  assert.match(yaml, /gh issue list --state open/);
+  assert.match(yaml, /\[Vitrine Radar\] Incidente de monitoramento/);
+  assert.match(yaml, /GITHUB_STEP_SUMMARY/);
+  assert.doesNotMatch(yaml, /gh issue create[\s\S]*?gh issue create/);
+});

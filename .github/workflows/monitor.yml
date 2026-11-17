@@ -1,10 +1,13 @@
 name: Vitrine Radar - monitoramento automatico
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
   schedule:
     - cron: '17 * * * *'
 permissions:
   contents: read
+  issues: write
 concurrency:
   group: vitrine-radar-health
   cancel-in-progress: true
@@ -20,6 +23,7 @@ jobs:
         with:
           node-version: '22'
       - name: Verificar producao e homologacao sem modificar dados
+        id: health-check
         shell: bash
         run: |
           set -euo pipefail
@@ -31,7 +35,44 @@ jobs:
           done
           echo "Ambos os endpoints responderam HTTP 2xx."
       - name: Validar ofertas publicadas sem alterar catalogo
+        id: catalog-check
         run: |
           node scripts/check-public-catalog.mjs \
             'https://vitrine-radar.ainacio1980-financas.workers.dev' \
             'https://vitrine-radar-filter-staging.ainacio1980-financas.workers.dev'
+      - name: Abrir incidente em caso de falha
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          title='[Vitrine Radar] Incidente de monitoramento'
+          existing=$(gh issue list --state open --limit 100 --json number,title --jq '.[] | select(.title == "[Vitrine Radar] Incidente de monitoramento") | .number' | head -n 1)
+          if [ -n "$existing" ]; then
+            echo "Incidente #$existing ja esta aberto. A execucao atual permanece registrada no Actions."
+          else
+            gh issue create --title "$title" --body "Falha detectada no monitoramento automatico de producao ou homologacao. Verifique [a execucao com detalhes](https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}). Nao houve alteracao de produtos nem deploy. Esta issue sera encerrada automaticamente quando as verificacoes voltarem a passar."
+          fi
+      - name: Encerrar incidente apos recuperacao
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          existing=$(gh issue list --state open --limit 100 --json number,title --jq '.[] | select(.title == "[Vitrine Radar] Incidente de monitoramento") | .number' | head -n 1)
+          if [ -n "$existing" ]; then
+            gh issue close "$existing" --comment "Verificacoes de producao, homologacao e ofertas voltaram a passar. [Execucao de recuperacao](https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})."
+          else
+            echo "Nenhum incidente aberto; a loja permanece monitorada."
+          fi
+      - name: Resumo do monitoramento
+        if: always()
+        shell: bash
+        run: |
+          if [ "${{ steps.health-check.outcome }}" = "success" ] && [ "${{ steps.catalog-check.outcome }}" = "success" ]; then
+            echo "### Vitrine Radar: producao, homologacao e ofertas verificadas." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### Vitrine Radar: incidente detectado. Consulte os passos acima e a issue automatica." >> "$GITHUB_STEP_SUMMARY"
+          fi
