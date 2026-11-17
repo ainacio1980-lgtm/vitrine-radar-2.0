@@ -231,3 +231,26 @@ export async function changeOfferStatus(db, actor, id, input) {
   }
   return { data: { status: next } };
 }
+
+const PRODUCT_TARGET = 500;
+
+// Counts read from D1; a missing-image count never implies links or prices are verified.
+export async function catalogSummary(db) {
+  const [{ results }, missing] = await Promise.all([
+    db.prepare("SELECT status, COUNT(*) AS total FROM offers GROUP BY status").all(),
+    db.prepare(
+      "SELECT COUNT(*) AS total FROM offers o WHERE o.status = 'pending' AND NOT EXISTS (SELECT 1 FROM product_images i WHERE i.offer_id = o.id)"
+    ).first(),
+  ]);
+  const totals = { pending: 0, approved: 0, paused: 0 };
+  for (const row of results) {
+    if (Object.hasOwn(totals, row.status)) totals[row.status] = Number(row.total) || 0;
+  }
+  return {
+    total: totals.pending + totals.approved + totals.paused,
+    ...totals,
+    target: PRODUCT_TARGET,
+    remaining: Math.max(0, PRODUCT_TARGET - totals.approved),
+    pending_without_photo: Number(missing?.total) || 0,
+  };
+}
