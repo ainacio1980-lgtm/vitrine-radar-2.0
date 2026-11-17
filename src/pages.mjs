@@ -127,7 +127,7 @@ function render() {
   const minimum = priceLimit(elements.minPrice);
   const maximum = priceLimit(elements.maxPrice);
   const list = products.filter(product =>
-    (selectedOfferId ? product.id === selectedOfferId : (!query || (terms && matchesSearch(product, terms))))
+    (selectedOfferId !== null ? String(product.id) === String(selectedOfferId) : (!query || (terms && matchesSearch(product, terms))))
     && (!category || product.category === category)
     && (!merchant || product.merchant === merchant)
     && (!elements.completeOnly.checked || (product.image_url && product.price_cents > 0))
