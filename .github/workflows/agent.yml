@@ -13,7 +13,6 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  models: read
 
 concurrency:
   group: vitrine-radar-agent
@@ -49,16 +48,18 @@ jobs:
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
-      - name: Propor melhoria isolada com GitHub Models
+      - name: Propor melhoria isolada com provedor configuravel
         id: model
         if: steps.pending.outputs.skip == 'false'
         continue-on-error: true
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          AI_BASE_URL: ${{ vars.AI_BASE_URL }}
+          AI_MODEL: ${{ vars.AI_MODEL }}
         run: python3 scripts/agent_propose.py
       - name: Registrar indisponibilidade do modelo
         if: steps.model.outcome == 'failure'
-        run: echo "::warning::GitHub Models indisponivel ou proposta rejeitada; execucao preservada sem alteracao."
+        run: echo "::warning::Provedor de IA nao configurado, indisponivel ou proposta rejeitada; execucao preservada sem alteracao."
       - name: Validar alteracoes
         if: steps.pending.outputs.skip == 'false' && steps.model.outcome == 'success'
         run: npm run verify
@@ -80,4 +81,4 @@ jobs:
           git add src/comparator_search.mjs
           git commit -m "fix: proposta automatica de robustez do filtro"
           git push origin "$branch"
-          gh pr create --base fix/filtro-sugestoes --head "$branch" --title "Proposta automatica: robustez do filtro" --body "Gerado por GitHub Models. Testes npm run verify executados. Revisao obrigatoria. Sem deploy automatico."
+          gh pr create --base fix/filtro-sugestoes --head "$branch" --title "Proposta automatica: robustez do filtro" --body "Gerado pelo agente de IA configurado. Testes npm run verify executados. Revisao obrigatoria. Sem deploy automatico."
