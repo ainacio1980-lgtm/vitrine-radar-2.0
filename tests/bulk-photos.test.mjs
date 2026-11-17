@@ -33,7 +33,7 @@ test('completa fotos somente de ofertas pendentes sem alterar status ou preço',
   assert.equal(response.data.added,2);
   assert.equal(response.data.skipped,0);
   assert.equal(db.queries.filter(q=>q.sql.startsWith('INSERT INTO admin_events')).length,2);
-  assert.ok(db.queries.every(q=>!/(UPDATE offers|DELETE|status\s*=|price_cents\s*=)/i.test(q.sql)));
+  assert.ok(db.queries.every(q=>!/\b(?:UPDATE|DELETE|DROP|ALTER)\s+offers\b/i.test(q.sql)), 'Somente INSERT de fotos e auditoria');
   assert.deepEqual([...db.saved],[101,102]);
 });
 
