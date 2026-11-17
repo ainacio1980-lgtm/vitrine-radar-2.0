@@ -1,0 +1,40 @@
+name: Vitrine Radar - validação contínua
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '17 */6 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vitrine-radar-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Verificar arquivos do projeto
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f package.json ]; then
+            echo "::error::package.json ausente. Importe o código-fonte da loja antes de habilitar testes e deploy."
+            exit 1
+          fi
+      - name: Instalar dependências e testar
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci
+          node -e "const p=require('./package.json'); if (!p.scripts || !p.scripts.test) { console.error('Script npm test obrigatório'); process.exit(1); }"
+          npm test
