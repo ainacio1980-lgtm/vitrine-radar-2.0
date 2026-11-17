@@ -74,3 +74,12 @@ Consulta somente leitura: entre ofertas pausadas, **30** têm padrões de URL as
 **Prioridade de validação externa: 10 ofertas pausadas** (7 Magalu e 3 Mercado Livre) com padrão de URL de afiliado, preço positivo e imagem cadastrada. As 18 Amazon continuam sem preço positivo; não reativar. Não alterar status sem verificar página, preço e atribuição de afiliado.
 
 As 80 ofertas aprovadas têm padrões de URL associados a afiliados (69 Magalu, 10 Mercado Livre, 1 Amazon), mas esse fato não confirma comissão ou funcionamento real.
+
+## Lote operacional prioritário — IDs confirmados no D1
+
+- **Magalu:** 1 (Samsung Galaxy A07), 3 (potes PRATICASA), 4 (notebook Multi Ultra), 5 (Air Fryer Philco), 6 (geladeira Midea), 7 (micro-ondas Electrolux), 8 (JBL Tune 530BT).
+- **Mercado Livre:** 9 (kit camisetas Zaroc; `https://meli.la/1mL4P2k`), 111 (balança SF-400; `https://meli.la/1NJZGKd`), 160 (mouse sem fio amarelo; `https://meli.la/2LR7UtV`).
+
+Os 7 URLs Magalu seguem o caminho `www.magazinevoce.com.br/magazinevitrineradar/`, consistente com a vitrine, mas sem prova de comissão ativa. Os três URLs Mercado Livre usam o encurtador `meli.la`. Os 10 permanecem `paused`. Os preços estão armazenados e podem estar desatualizados; nenhuma validação HTTP de destino ou preço foi feita nesta etapa.
+
+**Não alterar status ou preços** sem validação independente. Preservar os links originais de afiliados, não substituir por URLs diretas do varejista.
