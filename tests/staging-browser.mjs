@@ -30,9 +30,39 @@ try {
   const options = page.locator('#vr-suggestions button[role="option"]');
   await options.first().waitFor({state:'visible',timeout:15000});
   const chosen = await options.first().innerText();
+  const chosenProduct = await page.evaluate(() => {
+    const item = vitrineCatalog.findOffers('celular', 8).offers[0];
+    return { id: item.id, title: item.title, merchant: item.merchant };
+  });
   await options.first().click();
   assert.equal(await page.locator('#vr-suggestions').getAttribute('style').then(s=>s.includes('display: none') || s.includes('display:none')), true, 'Sugestões não ocultadas após clique');
-  assert.ok((await page.locator('#q').inputValue()).length > 3, 'Busca não preenchida');
-  const count = await page.locator('#result-count').innerText();
-  console.log(JSON.stringify({chosen,count,search:await page.locator('#q').inputValue()}));
+  assert.equal(await page.locator('#q').inputValue(), chosenProduct.title, 'Busca não preenchida com o título selecionado');
+  assert.equal(await page.locator('#cards article.card').count(), 1, 'Uma seleção deve exibir exatamente um card');
+  assert.equal(await page.locator('#cards article.card a.product-title').getAttribute('href'), '/ofertas/' + chosenProduct.id, 'Card exibido corresponde a outro ID');
+  assert.equal(await page.locator('#cards article.card .merchant').innerText(), chosenProduct.merchant, 'Loja incorreta no card');
+  assert.match(await page.locator('#result-count').innerText(), /^1 de \d+ ofertas$/, 'Contagem incorreta após seleção');
+
+  // After selecting, editing the query must drop the ID lock.
+  await page.locator('#q').fill('celular');
+  assert.ok(await page.locator('#vr-suggestions button[role="option"]').count() > 0, 'Editar a busca deve reabrir sugestões');
+
+  // Native keyboard activation with ArrowDown/Enter should select one offer.
+  await page.locator('#q').press('ArrowDown');
+  assert.equal(await page.locator('#vr-suggestions button[role="option"]').first().evaluate(el => el === document.activeElement), true, 'ArrowDown não moveu o foco');
+  await page.keyboard.press('Enter');
+  assert.equal(await page.locator('#cards article.card').count(), 1, 'Enter selecionou mais de um card');
+  assert.equal(await page.locator('#cards article.card a.product-title').getAttribute('href'), '/ofertas/' + chosenProduct.id, 'Enter perdeu o ID selecionado');
+
+  // Reset must restore all products and clear the selected ID.
+  await page.locator('#clearFilters').click();
+  assert.equal(await page.locator('#q').inputValue(), '');
+  assert.ok(await page.locator('#cards article.card').count() > 1, 'Limpar filtros não restaurou catálogo');
+
+  // Space also activates a focused suggestion without duplicate events.
+  await page.locator('#q').fill('celular');
+  await page.locator('#q').press('ArrowDown');
+  await page.keyboard.press('Space');
+  assert.equal(await page.locator('#cards article.card').count(), 1, 'Espaço deve selecionar exatamente um card');
+  assert.equal(await page.locator('#cards article.card a.product-title').getAttribute('href'), '/ofertas/' + chosenProduct.id, 'Espaço perdeu o ID selecionado');
+  console.log(JSON.stringify({chosen,selectedId:chosenProduct.id,keyboard:'Enter e Espaço',count:await page.locator('#result-count').innerText()}));
 } finally { await browser.close(); }
