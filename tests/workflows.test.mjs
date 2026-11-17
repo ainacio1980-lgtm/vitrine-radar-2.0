@@ -1,0 +1,37 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+function workflow(filename) {
+  return readFileSync(new URL('../.github/workflows/' + filename, import.meta.url), 'utf8');
+}
+
+test('agente opera sobre main e abre PR sem publicar', () => {
+  const yaml = workflow('agent.yml');
+  assert.doesNotMatch(yaml, /fix\/filtro-sugestoes/);
+  assert.match(yaml, /gh pr create --base main --head/);
+  assert.match(yaml, /gh pr list --base main --state open/);
+  assert.match(yaml, /python3 scripts\/agent_propose\.py/);
+  assert.match(yaml, /ref: main/);
+  assert.match(yaml, /GEMINI_API_KEY/);
+  assert.doesNotMatch(yaml, /wrangler deploy|cf deploy|curl.*-X POST.*workers\/scripts/);
+});
+
+test('monitoramento horario apenas consulta ambos os ambientes', () => {
+  const yaml = workflow('monitor.yml');
+  assert.match(yaml, /cron: '17 \* \* \* \*'/);
+  assert.match(yaml, /vitrine-radar\.ainacio1980-financas\.workers\.dev\/api\/health/);
+  assert.match(yaml, /vitrine-radar-filter-staging\.ainacio1980-financas\.workers\.dev\/api\/health/);
+  assert.doesNotMatch(yaml, /playwright|npm install|wrangler deploy/);
+});
+
+test('testes completos seguem automatizados e verificacao avulsa nao duplica', () => {
+  const full = workflow('validate.yml');
+  const manual = workflow('verify.yml');
+  assert.match(full, /branches: \[main\]/);
+  assert.match(full, /npx playwright install/);
+  assert.match(full, /node tests\/staging-browser\.mjs/);
+  assert.match(manual, /workflow_dispatch/);
+  assert.doesNotMatch(manual, /schedule:|fix\/filtro-sugestoes/);
+  assert.match(manual, /ref: main/);
+});
