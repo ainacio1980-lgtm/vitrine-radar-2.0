@@ -1,3 +1,5 @@
+import { safeProductImageUrl } from "./product_images.mjs";
+
 const pageSize = 50;
 const statuses = ["pending", "approved", "paused"];
 const transitions = { pending: "approved", approved: "paused", paused: "approved" };
@@ -164,7 +166,7 @@ export async function changeOfferStatus(db, actor, id, input) {
     return { error: "Essa alteração de status não é permitida.", status: 400 };
   }
 
-  const offer = await db.prepare("SELECT url, status FROM offers WHERE id = ?").bind(id).first();
+  const offer = await db.prepare("SELECT url, status, price_cents, merchant FROM offers WHERE id = ?").bind(id).first();
   if (!offer) return { error: "Oferta não encontrada.", status: 404 };
   if (offer.status !== previous) return { error: "O status mudou. Confira o catálogo e tente novamente.", status: 409 };
   if (next === "approved") {
@@ -172,6 +174,18 @@ export async function changeOfferStatus(db, actor, id, input) {
       offerDestination(offer.url);
     } catch {
       return { error: "A oferta precisa de um link HTTPS válido para ser aprovada.", status: 422 };
+    }
+    if (!Number.isSafeInteger(offer.price_cents) || offer.price_cents <= 0) {
+      return { error: "Cadastre um preço válido antes de publicar a oferta.", status: 422 };
+    }
+    if (!["Magalu", "Amazon", "Mercado Livre", "Shopee"].includes(offer.merchant)) {
+      return { error: "Informe uma loja parceira válida antes de publicar.", status: 422 };
+    }
+    const picture = await db.prepare(
+      "SELECT image_url FROM product_images WHERE offer_id = ? ORDER BY sort_order, id LIMIT 1"
+    ).bind(id).first();
+    if (!picture || !safeProductImageUrl(picture.image_url)) {
+      return { error: "Cadastre uma foto HTTPS válida antes de publicar a oferta.", status: 422 };
     }
   }
 
