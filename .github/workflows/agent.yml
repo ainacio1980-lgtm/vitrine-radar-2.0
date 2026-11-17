@@ -3,7 +3,7 @@ name: Vitrine Radar - agente experimental de correcoes
 on:
   workflow_dispatch:
   schedule:
-    - cron: '43 7 * * *'
+    - cron: '17 0,6,12,18 * * *'
 
 permissions:
   contents: write
@@ -28,13 +28,30 @@ jobs:
           node-version: '22'
       - name: Verificar base
         run: npm run verify
+      - name: Evitar propostas duplicadas
+        id: pending
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          count=$(gh pr list --base fix/filtro-sugestoes --state open --json number,title --jq '[.[] | select(.title == "Proposta automatica: robustez do filtro")] | length')
+          if [ "$count" -gt 0 ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Ja existe proposta automatica pendente; aguardando revisao."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Propor melhoria isolada com GitHub Models
+        if: steps.pending.outputs.skip == 'false'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 scripts/agent_propose.py
       - name: Validar alteracoes
+        if: steps.pending.outputs.skip == 'false'
         run: npm run verify
       - name: Abrir PR sem publicar
+        if: steps.pending.outputs.skip == 'false'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
