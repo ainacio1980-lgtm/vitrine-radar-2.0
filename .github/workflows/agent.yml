@@ -49,6 +49,17 @@ jobs:
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
+      - name: Verificar configuracao da IA
+        if: steps.pending.outputs.skip == 'false'
+        env:
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+        shell: bash
+        run: |
+          if [ -z "$AI_API_KEY" ]; then
+            echo "::error::AI_API_KEY nao configurada. Configure o segredo do repositorio antes de executar o agente."
+            exit 1
+          fi
+          echo "Credencial de IA presente (valor nao exibido)."
       - name: Propor melhoria isolada via provedor configurado
         id: model
         if: steps.pending.outputs.skip == 'false'
