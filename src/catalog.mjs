@@ -328,3 +328,43 @@ export async function importPendingPhotos(db, actor, input) {
   }
   return { data: { received: normalized.length, added, skipped, errors, note: "Fotos adicionadas; aprovação ainda exige revisão e link de afiliado válido." } };
 }
+
+
+/**
+ * Auditoria somente leitura. Dados estruturais nao verificam estoque, preco atual
+ * nem o credito de comissao no programa de afiliados.
+ */
+export async function recoveryAudit(db) {
+  const { results } = await db.prepare(
+    "SELECT o.id,o.title,o.merchant,o.status,o.price_cents,o.url," +
+    "(SELECT image_url FROM product_images i WHERE i.offer_id=o.id ORDER BY sort_order,id LIMIT 1) AS image_url " +
+    "FROM offers o WHERE o.status IN ('pending','paused') " +
+    "ORDER BY CASE WHEN o.status='paused' THEN 0 ELSE 1 END, o.id DESC LIMIT 1000"
+  ).all();
+  const summary = { total: 0, ready_for_review: 0, missing_photo: 0, missing_price: 0, invalid_affiliate_link: 0 };
+  const offers = results.map(offer => {
+    const blockers = [];
+    if (!Number.isSafeInteger(offer.price_cents) || offer.price_cents <= 0) {
+      blockers.push("preco_ausente");
+      summary.missing_price++;
+    }
+    if (!safeProductImageUrl(offer.image_url)) {
+      blockers.push("foto_ausente");
+      summary.missing_photo++;
+    }
+    try {
+      affiliateDestinationForMarketplace(offer.merchant, offer.url);
+    } catch {
+      blockers.push("link_afiliado_nao_reconhecido");
+      summary.invalid_affiliate_link++;
+    }
+    summary.total++;
+    if (!blockers.length) summary.ready_for_review++;
+    return { ...offer, blockers, ready_for_review: blockers.length === 0 };
+  });
+  return {
+    summary,
+    offers,
+    notice: "Triagem apenas estrutural. Toda oferta exige verificar preco atual, estoque e elegibilidade da comissao antes de aprovar.",
+  };
+}

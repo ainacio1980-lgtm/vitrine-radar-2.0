@@ -1,6 +1,6 @@
 import { adminPage } from "./admin.mjs";
 import { addCouponAdmin } from "./admin_coupons.mjs";
-import { catalogSummary, changeOfferStatus, createOffer, updateOffer, importOffers, importPendingPhotos, listCatalog, offerDestination } from "./catalog.mjs";
+import { catalogSummary, recoveryAudit, changeOfferStatus, createOffer, updateOffer, importOffers, importPendingPhotos, listCatalog, offerDestination } from "./catalog.mjs";
 import { adminEmail, loginPage, storefrontPage, aboutPage, guidePage } from "./pages.mjs";
 import { renderGuidePage, guideSlugs } from "./guides.mjs";
 import { renderOfferPage } from "./offer_pages.mjs";
@@ -180,6 +180,24 @@ async function handleAdmin(request, url, db) {
     }
     if (path === "/api/admin/summary") {
       return authJson(await catalogSummary(db));
+    }
+    if (path === "/api/admin/recovery" || path === "/api/admin/recovery.csv") {
+      const audit = await recoveryAudit(db);
+      if (path === "/api/admin/recovery") return authJson({summary:audit.summary,notice:audit.notice});
+      const columns = ["id","status","loja","produto","preco_centavos","foto","url_afiliado","bloqueios","apto_revisao"];
+      const clean = value => {
+        const s = String(value ?? "");
+        const safe = /^[=+@-]/.test(s) ? "'" + s : s;
+        return '"' + safe.replaceAll('"','""') + '"';
+      };
+      const csv = String.fromCharCode(65279) + columns.join(";") + "\r\n" +
+        audit.offers.map(offer => [
+          offer.id,offer.status,offer.merchant,offer.title,offer.price_cents,
+          offer.image_url,offer.url,offer.blockers.join(" | "),offer.ready_for_review ? "sim" : "nao",
+        ].map(clean).join(";")).join("\r\n") + "\r\n";
+      return new Response(csv,{headers:{...authHeaders,
+        "content-type":"text/csv; charset=utf-8",
+        "content-disposition":'attachment; filename="vitrine-radar-recuperacao-ofertas.csv"'}});
     }
     if (path === "/api/admin/photos/missing.csv") {
       const { results } = await db.prepare(
