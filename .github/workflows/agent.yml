@@ -1,4 +1,4 @@
-name: Vitrine Radar - agente experimental de correcoes
+name: Vitrine Radar - agente de correcoes (Gemini opcional)
 
 on:
   workflow_dispatch:
@@ -11,12 +11,11 @@ on:
       - main
       - fix/filtro-sugestoes
   schedule:
-    - cron: '17 * * * *'
+    - cron: '17 9 * * *'
 
 permissions:
   contents: write
   pull-requests: write
-  models: read
 
 concurrency:
   group: vitrine-radar-agent
@@ -84,11 +83,23 @@ jobs:
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
+      - name: Verificar configuracao gratuita de IA
+        id: provider
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        shell: bash
+        run: |
+          if [ -n "$GEMINI_API_KEY" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::IA pausada: adicione GEMINI_API_KEY de uma conta no plano gratuito. Os testes continuam; nenhuma chamada paga sera feita."
+          fi
       - name: Corrigir e testar automaticamente (ate 3 tentativas)
         id: model
-        if: steps.pending.outputs.skip == 'false'
+        if: steps.pending.outputs.skip == 'false' && steps.provider.outputs.enabled == 'true'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           AI_MODEL: ${{ vars.AI_MODEL }}
         shell: bash
         run: |
