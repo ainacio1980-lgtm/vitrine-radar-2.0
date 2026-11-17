@@ -7,12 +7,6 @@ export function normalizeProductSearch(text) {
     .trim();
 }
 
-// Capacities, device model codes and variants cannot match a longer prefix.
-// Keep prefixes only for ordinary words while the customer is typing.
-function requiresExactToken(token) {
-  return /^(?:\d+(?:gb|tb|mb|mah|hz|ml|mg|kg|cm|mm)|[a-z]{1,5}\d+[a-z0-9]*|preto|branco|azul|verde|rosa|cinza|prata|dourado|pro|ultra|plus|max)$/.test(token);
-}
-
 export function productSearchTerms(query, minimumLength = 2) {
   const normalized = normalizeProductSearch(query);
   const tokens = [...new Set(normalized.split(" ").filter(Boolean))];
@@ -21,7 +15,7 @@ export function productSearchTerms(query, minimumLength = 2) {
   return {
     exact: tokens.map(token => ` ${token} `),
     // A complete capacity or measurement is specific. A partially typed word can match a prefix.
-    prefixes: tokens.map(token => requiresExactToken(token) ? ` ${token} ` : ` ${token}`),
+    prefixes: tokens.map(token => /^(?:\d+(?:gb|tb|mb|mah|hz|ml|mg|kg|cm|mm)|[a-z]{1,5}\d+[a-z0-9]*|preto|branco|azul|verde|rosa|cinza|prata|dourado|pro|ultra|plus|max)$/.test(token) ? ` ${token} ` : ` ${token}`),
     phrase: ` ${normalized} `,
     barcode: /^\d+$/.test(normalized) ? normalized : "",
   };
