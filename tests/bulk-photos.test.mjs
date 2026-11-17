@@ -68,6 +68,7 @@ test('rotas de download e importacao exigem sessao e CSRF administrativos',()=>{
   const worker=readFileSync(new URL('../src/worker.mjs',import.meta.url),'utf8');
   const admin=readFileSync(new URL('../src/admin.mjs',import.meta.url),'utf8');
   assert.match(worker,/\/api\/admin\/photos\/missing\.csv/);
+  assert.match(worker,/WHERE o\.status='pending' AND NOT EXISTS/);
   assert.match(worker,/\/api\/admin\/photos\/import/);
   assert.match(worker,/request\.headers\.get\("x-csrf-token"\)/);
   assert.match(worker,/importPendingPhotos\(db, session\.email, body\)/);
