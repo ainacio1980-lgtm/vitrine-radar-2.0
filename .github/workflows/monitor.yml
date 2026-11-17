@@ -13,6 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - name: Verificar producao e homologacao sem modificar dados
         shell: bash
         run: |
@@ -24,3 +30,8 @@ jobs:
             curl --fail --show-error --silent --location --max-time 20 --retry 2 "$url" > /dev/null
           done
           echo "Ambos os endpoints responderam HTTP 2xx."
+      - name: Validar ofertas publicadas sem alterar catalogo
+        run: |
+          node scripts/check-public-catalog.mjs \
+            'https://vitrine-radar.ainacio1980-financas.workers.dev' \
+            'https://vitrine-radar-filter-staging.ainacio1980-financas.workers.dev'

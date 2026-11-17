@@ -40,3 +40,19 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Testar clique real na sugestão em homologação
         run: node tests/staging-browser.mjs
+
+  catalog-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Conferir cards publicos por pagina
+        run: |
+          node scripts/check-public-catalog.mjs \
+            'https://vitrine-radar.ainacio1980-financas.workers.dev' \
+            'https://vitrine-radar-filter-staging.ainacio1980-financas.workers.dev'
