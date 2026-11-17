@@ -1,4 +1,4 @@
-"""Agente experimental limitado a um arquivo, sem acesso a segredos da aplicacao."""
+"""Agente experimental Gemini (apenas nivel gratuito), limitado a um arquivo. Sem deploy."""
 import json
 import os
 from pathlib import Path
@@ -6,9 +6,9 @@ from urllib.request import Request, urlopen
 
 target = Path("src/comparator_search.mjs")
 original = target.read_text(encoding="utf-8")
-token = os.environ.get("GITHUB_TOKEN")
+token = os.environ.get("GEMINI_API_KEY")
 if not token:
-    raise SystemExit("GITHUB_TOKEN indisponivel")
+    raise SystemExit("GEMINI_API_KEY ausente: nenhuma chamada de IA executada")
 prompt = (
     "Revise este modulo JavaScript de filtro de produtos. Corrija apenas bugs objetivos "
     "de correspondencia de texto, normalizacao e selecao, preservando a API exportada. "
@@ -16,26 +16,30 @@ prompt = (
     "Retorne SOMENTE o conteudo completo do arquivo JavaScript, sem markdown. "
     "Se nao houver correcao segura, retorne o arquivo inalterado.\n\n" + original
 )
+model = (os.environ.get("AI_MODEL") or "gemini-2.5-flash").strip()
+if model not in ("gemini-2.5-flash", "gemini-2.5-flash-lite"):
+    raise SystemExit("Modelo fora da lista gratuita permitida.")
 payload = json.dumps({
-    "model": os.environ.get("AI_MODEL", "openai/gpt-4o-mini"),
-    "messages": [{"role": "user", "content": prompt}],
-    "temperature": 0,
-    "max_tokens": 3500,
-}).encode()
+    "contents": [{"parts": [{"text": prompt}]}],
+    "generationConfig": {"temperature": 0.1, "maxOutputTokens": 4000},
+}).encode("utf-8")
 req = Request(
-    "https://models.github.ai/inference/chat/completions",
+    "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent",
     data=payload,
-    headers={"Authorization": "Bearer " + token,
+    headers={"x-goog-api-key": token,
              "Content-Type": "application/json",
-             "Accept": "application/vnd.github+json",
-             "X-GitHub-Api-Version": "2022-11-28"},
+             "Accept": "application/json"},
+    method="POST",
 )
 try:
     with urlopen(req, timeout=90) as response:
         result = json.load(response)
 except Exception as exc:
-    raise SystemExit("GitHub Models indisponivel; nenhuma alteracao realizada: " + str(exc))
-proposal = result["choices"][0]["message"]["content"].strip()
+    raise SystemExit("Gemini indisponivel ou cota gratuita excedida; nenhuma alteracao realizada: " + str(exc))
+try:
+    proposal = "".join(part.get("text", "") for part in result["candidates"][0]["content"]["parts"]).strip()
+except (KeyError, IndexError, TypeError) as exc:
+    raise SystemExit("Resposta sem codigo gerado; nenhuma alteracao realizada.") from exc
 if proposal.startswith("```"):
     proposal = "\n".join(proposal.splitlines()[1:-1]).strip()
 if not proposal or len(proposal) > 30000 or "import(" in proposal or "fetch(" in proposal:
