@@ -22,3 +22,9 @@ test('native suggestion button does not have duplicate keydown activation', () =
   assert.match(source, /item\.type='button'/);
   assert.doesNotMatch(source, /item\.addEventListener\('keydown'/);
 });
+
+test('IDs numéricos e textuais são comparados sem perder a seleção', () => {
+  assert.match(source, /selectedOfferId !== null \? String\(product\.id\) === String\(selectedOfferId\)/);
+  assert.equal(String(123), String('123'));
+  assert.notEqual(String(123), String('124'));
+});
