@@ -64,5 +64,9 @@ try {
   await page.keyboard.press('Space');
   assert.equal(await page.locator('#cards article.card').count(), 1, 'Espaço deve selecionar exatamente um card');
   assert.equal(await page.locator('#cards article.card a.product-title').getAttribute('href'), '/ofertas/' + chosenProduct.id, 'Espaço perdeu o ID selecionado');
-  console.log(JSON.stringify({chosen,selectedId:chosenProduct.id,keyboard:'Enter e Espaço',count:await page.locator('#result-count').innerText()}));
+  await page.locator('#clearFilters').click();
+  await page.locator('#q').fill('celular');
+  await page.locator('#q').press('Escape');
+  assert.equal(await page.locator('#vr-suggestions').getAttribute('style').then(s => s.includes('display: none') || s.includes('display:none')), true, 'Escape deve fechar as sugestões');
+  console.log(JSON.stringify({chosen,selectedId:chosenProduct.id,keyboard:'Enter, Espaço e Escape',count:await page.locator('#result-count').innerText()}));
 } finally { await browser.close(); }
