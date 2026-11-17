@@ -28,3 +28,9 @@ test('IDs numéricos e textuais são comparados sem perder a seleção', () => {
   assert.equal(String(123), String('123'));
   assert.notEqual(String(123), String('124'));
 });
+
+test('campo de busca tem apenas um listener de input que atualiza os resultados', () => {
+  assert.equal((source.match(/elements\\.q\\.addEventListener\\('input'/g) || []).length, 1);
+  assert.match(source, /for \(const field of \[elements\.minPrice, elements\.maxPrice\]\)/);
+  assert.doesNotMatch(source, /for \(const field of \[elements\.q, elements\.minPrice, elements\.maxPrice\]\)/);
+});
