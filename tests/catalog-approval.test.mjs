@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { changeOfferStatus } from '../src/catalog.mjs';
 
 const complete = {
-  url: 'https://www.magazineluiza.com.br/produto/123',
+  url: 'https://www.magazinevoce.com.br/magazinevitrineradar/produto-exemplo/p/123456700/ed/item/',
   status: 'pending', price_cents: 19990, merchant: 'Magalu',
 };
 function makeDb(offer = complete, image = 'https://a-static.mlcdn.com.br/item.jpg') {
