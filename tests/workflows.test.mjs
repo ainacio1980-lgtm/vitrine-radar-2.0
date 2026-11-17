@@ -49,3 +49,18 @@ test('incidentes de monitoramento sao registrados e fechados com verificacoes re
   assert.match(yaml, /GITHUB_STEP_SUMMARY/);
   assert.doesNotMatch(yaml, /gh issue create[\s\S]*?gh issue create/);
 });
+
+test('o agente agenda inferencia local gratuita mesmo sem chave Gemini', () => {
+  const yaml=workflow('agent.yml');
+  const python=readFileSync(new URL('../scripts/agent_propose.py',import.meta.url),'utf8');
+  assert.match(yaml, /cron: '17 \*\/6 \* \* \*'/);
+  assert.match(yaml, /backend=ollama/);
+  assert.match(yaml, /docker run -d --name vr-ollama/);
+  assert.match(yaml, /ollama pull qwen2\.5-coder:1\.5b/);
+  assert.match(yaml, /AI_BACKEND:/);
+  assert.match(yaml, /npm run verify/);
+  assert.match(yaml, /gh pr create --base main/);
+  assert.match(python, /127\.0\.0\.1:11434\/api\/generate/);
+  assert.match(python, /qwen2\.5-coder:1\.5b/);
+  assert.doesNotMatch(yaml, /wrangler deploy|auto-merge|gh pr merge/);
+});
