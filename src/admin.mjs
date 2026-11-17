@@ -126,6 +126,22 @@ export function adminPage(csrf) {
     </form>
   </section>
 
+  <section class="card" aria-labelledby="photo-import-title">
+    <h2 id="photo-import-title">Completar fotos de ofertas pendentes</h2>
+    <p class="muted">Baixe o CSV das ofertas sem foto, preencha a coluna foto com a URL HTTPS da imagem oficial correspondente e envie o arquivo. O painel processa lotes de até 50, sem mudar preços, links ou publicar automaticamente.</p>
+    <p><a href="/api/admin/photos/missing.csv" download>Baixar CSV de ofertas pendentes sem foto</a></p>
+    <form id="photo-import-form">
+      <fieldset class="fields" id="photo-import-fields">
+        <label class="wide">Arquivo CSV preenchido<input id="photo-import-file" type="file" accept=".csv,text/csv"></label>
+        <label class="wide">Ou colar CSV (colunas id;foto)<textarea id="photo-import-text" rows="4" placeholder="id;foto"></textarea></label>
+      </fieldset>
+      <div class="form-actions">
+        <button type="submit" class="primary" id="photo-import-submit">Validar e cadastrar fotos</button>
+        <p class="feedback" id="photo-import-message" role="status"></p>
+      </div>
+    </form>
+  </section>
+
   <section class="card" aria-labelledby="catalog-title">
     <div class="toolbar">
       <h2 id="catalog-title">Catálogo</h2><a href="/api/admin/export">Exportar catálogo CSV</a>
@@ -760,6 +776,55 @@ export function adminPage(csrf) {
     }
   });
 
+
+  function parsePhotoCsv(text) {
+    const lines = text.replaceAll(String.fromCharCode(13), '').replaceAll(String.fromCharCode(65279), '')
+      .split(String.fromCharCode(10)).filter(x => x.trim());
+    if (lines.length < 2) throw Error('Informe cabecalho e ao menos uma oferta.');
+    const header = splitCsvLine(lines.shift()).map(x => x.trim().toLocaleLowerCase('pt-BR'));
+    const idColumn = header.indexOf('id');
+    const photoColumn = ['foto','imagem','image_url'].map(x => header.indexOf(x)).find(x => x >= 0);
+    if (idColumn < 0 || photoColumn === undefined) throw Error('Cabeçalho deve conter id;foto.');
+    const selected = [];
+    for (const [index,line] of lines.entries()) {
+      const cells = splitCsvLine(line);
+      if (cells.length !== header.length) throw Error('Número de colunas incorreto na linha ' + (index+2) + '.');
+      if (!cells[photoColumn]) continue;
+      const id = Number(cells[idColumn]);
+      if (!Number.isSafeInteger(id) || id < 1) throw Error('ID inválido na linha ' + (index+2) + '.');
+      selected.push({id,image_url:cells[photoColumn]});
+    }
+    if (!selected.length) throw Error('Preencha ao menos uma foto oficial.');
+    if (selected.length > 500) throw Error('Máximo de 500 fotos por arquivo.');
+    if (new Set(selected.map(x=>x.id)).size !== selected.length) throw Error('IDs repetidos no arquivo.');
+    return selected;
+  }
+
+  byId('photo-import-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    feedback('photo-import-message');
+    byId('photo-import-fields').disabled = true;
+    byId('photo-import-submit').disabled = true;
+    try {
+      const file = byId('photo-import-file').files[0];
+      if (file && file.size > 256 * 1024) throw Error('Arquivo de fotos excede 256 KB.');
+      const rows = parsePhotoCsv(file ? await file.text() : byId('photo-import-text').value);
+      let added = 0, skipped = 0;
+      for (let offset = 0; offset < rows.length; offset += 50) {
+        const result = await api('/api/admin/photos/import','POST',{rows:rows.slice(offset,offset+50)});
+        added += result.added; skipped += result.skipped;
+      }
+      feedback('photo-import-message', added+' fotos cadastradas em ofertas pendentes; '+skipped+
+        ' não modificadas. Revise preço, produto e link de afiliado antes de aprovar.');
+      byId('photo-import-form').reset();
+      await Promise.all([refreshCatalog(), refreshMetrics()]);
+    } catch(e) {
+      feedback('photo-import-message',e.message,true);
+    } finally {
+      byId('photo-import-fields').disabled=false;
+      byId('photo-import-submit').disabled=false;
+    }
+  });
 
   byId('cancel-edit').addEventListener('click', () => { resetEditor(); feedback('form-message'); });
   byId('status-filter').addEventListener('change', () => { currentPage = 1; feedback('catalog-message'); refreshCatalog(); });
