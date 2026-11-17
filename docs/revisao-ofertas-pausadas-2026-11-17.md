@@ -26,3 +26,15 @@ Fonte: consulta somente leitura ao D1 de produção. **Nenhuma oferta foi reativ
 5. Comparação entre marketplaces somente com equivalência demonstrada.
 
 A homologação contém alguns IDs que também existem pausados em produção; bancos são independentes. Nunca inferir status de produção a partir da homologação.
+
+## Resultado da inspeção dos links e das validações armazenadas
+
+Consulta D1 de produção dos IDs 32 (Mercado Livre) e 36 (Shopee):
+
+- `offer_link_meta.kind = retailer_direct` nos dois anúncios; a última revisão registrada é de 14/11/2026. **Não há confirmação de afiliação**.
+- Validação `merchant_link_format_db_20261117`: **reprovada** para o ID 32; **aprovada** para o ID 36. Isso verifica formato, não comissão.
+- Validações de domínio da loja, URL HTTPS, imagem HTTPS, imagem presente e preço positivo foram aprovadas no banco para ambos, mas não comprovam que o recurso remoto carregue atualmente.
+- `offer_quality_checks`: nenhuma linha encontrada para esses dois IDs.
+- URL do ID 32 aponta diretamente para `www.mercadolivre.com.br`; URL do ID 36 aponta diretamente para `shopee.com.br`. Nenhuma das duas foi demonstrada como link rastreado de afiliado.
+
+**Decisão:** manter ambos pausados. Solicitar ou recuperar URLs de afiliado comprovadas e confirmar dimensões do produto Shopee, preços e estoque antes de eventual comparação/publicação. Não inventar links nem inferir comissão.
