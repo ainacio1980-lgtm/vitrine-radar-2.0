@@ -62,7 +62,14 @@ export function adminPage(csrf) {
     <div class="card">Pendentes<strong id="pending">—</strong></div>
     <div class="card">Aprovadas<strong id="approved">—</strong></div>
     <div class="card">Suspensas<strong id="paused">—</strong></div>
+    <div class="card">Faltam para 500<strong id="remaining">—</strong></div>
+    <div class="card">Pendentes sem foto<strong id="pending-without-photo">—</strong></div>
   </div>
+  <section class="card" aria-label="Meta de 500 produtos publicados">
+    <h2>Meta: 500 produtos publicados</h2>
+    <progress id="goal-progress" value="0" max="500" style="width:100%;height:18px"></progress>
+    <p id="goal-progress-label" class="muted" role="status">Calculando progresso...</p>
+  </section>
 
   <section class="card" aria-labelledby="new-title">
     <h2 id="new-title">Cadastrar oferta</h2>
@@ -625,6 +632,15 @@ export function adminPage(csrf) {
     await Promise.allSettled([
       api('/api/admin/summary').then(data => {
         for (const key of ['total', 'pending', 'approved', 'paused']) byId(key).textContent = data[key];
+        const target = Number(data.target) || 500;
+        byId('remaining').textContent = Math.max(0, Number(data.remaining) || 0);
+        byId('pending-without-photo').textContent = Number(data.pending_without_photo) || 0;
+        byId('goal-progress').max = target;
+        byId('goal-progress').value = Math.min(target, Number(data.approved) || 0);
+        byId('goal-progress-label').textContent = (Number(data.approved) || 0) +
+          ' ofertas publicadas de ' + target + ' (' +
+          Math.min(100, ((Number(data.approved) || 0) / target) * 100).toFixed(1).replace('.', ',') +
+          '%). Faltam ' + Math.max(0, Number(data.remaining) || 0) + ' ofertas validadas.';
       }),
       api('/api/admin/operations').then(data => {
         for (const key of ['clicks', 'imports', 'jobs']) byId(key).textContent = data[key];
