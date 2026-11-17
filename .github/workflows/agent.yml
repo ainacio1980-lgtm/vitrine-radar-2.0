@@ -64,19 +64,32 @@ jobs:
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
-      - name: Propor melhoria isolada via GitHub Models
+      - name: Corrigir e testar automaticamente (ate 3 tentativas)
         id: model
         if: steps.pending.outputs.skip == 'false'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AI_MODEL: ${{ vars.AI_MODEL }}
-        run: python3 scripts/agent_propose.py
-      - name: Registrar indisponibilidade do modelo
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            echo "::group::Tentativa $attempt de 3"
+            git restore -- src/comparator_search.mjs
+            if python3 scripts/agent_propose.py && npm run verify; then
+              echo "Proposta validada pelos testes."
+              echo "::endgroup::"
+              exit 0
+            fi
+            echo "::warning::Tentativa $attempt falhou; restaurando arquivo antes da proxima."
+            echo "::endgroup::"
+          done
+          git restore -- src/comparator_search.mjs
+          echo "::error::Agente nao produziu proposta valida apos 3 tentativas."
+          exit 1
+      - name: Registrar falha do agente
         if: failure() && steps.model.outcome == 'failure'
-        run: echo "::warning::Provedor de IA nao configurado, indisponivel ou proposta rejeitada; execucao preservada sem alteracao."
-      - name: Validar alteracoes
-        if: steps.pending.outputs.skip == 'false' && steps.model.outcome == 'success'
-        run: npm run verify
+        run: echo "::warning::Agente falhou apos tentativas limitadas; nenhuma alteracao sera publicada."
       - name: Abrir PR sem publicar
         if: steps.pending.outputs.skip == 'false' && steps.model.outcome == 'success'
         env:
