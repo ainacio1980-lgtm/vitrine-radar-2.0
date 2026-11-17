@@ -19,14 +19,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout da branch de homologacao
+        uses: actions/checkout@v4
         with:
           ref: fix/filtro-sugestoes
           persist-credentials: true
-      - uses: actions/setup-node@v4
+      - name: Preparar Node
+        uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Verificar base
+      - name: Verificar base antes da proposta
         run: npm run verify
       - name: Evitar propostas duplicadas
         id: pending
@@ -38,20 +40,25 @@ jobs:
           count=$(gh pr list --base fix/filtro-sugestoes --state open --json number,title --jq '[.[] | select(.title == "Proposta automatica: robustez do filtro")] | length')
           if [ "$count" -gt 0 ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "Ja existe proposta automatica pendente; aguardando revisao."
+            echo "Existe proposta pendente; nao criar duplicata."
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
       - name: Propor melhoria isolada com GitHub Models
+        id: model
         if: steps.pending.outputs.skip == 'false'
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 scripts/agent_propose.py
+      - name: Registrar indisponibilidade do modelo
+        if: steps.model.outcome == 'failure'
+        run: echo "::warning::GitHub Models indisponivel ou proposta rejeitada; execucao preservada sem alteracao."
       - name: Validar alteracoes
-        if: steps.pending.outputs.skip == 'false'
+        if: steps.pending.outputs.skip == 'false' && steps.model.outcome == 'success'
         run: npm run verify
       - name: Abrir PR sem publicar
-        if: steps.pending.outputs.skip == 'false'
+        if: steps.pending.outputs.skip == 'false' && steps.model.outcome == 'success'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
@@ -68,4 +75,4 @@ jobs:
           git add src/comparator_search.mjs
           git commit -m "fix: proposta automatica de robustez do filtro"
           git push origin "$branch"
-          gh pr create --base fix/filtro-sugestoes --head "$branch" --title "Proposta automatica: robustez do filtro" --body "Gerado por GitHub Models. Testes npm run verify executados. **Revisao humana obrigatoria. Sem deploy automatico.**"
+          gh pr create --base fix/filtro-sugestoes --head "$branch" --title "Proposta automatica: robustez do filtro" --body "Gerado por GitHub Models. Testes npm run verify executados. Revisao obrigatoria. Sem deploy automatico."
