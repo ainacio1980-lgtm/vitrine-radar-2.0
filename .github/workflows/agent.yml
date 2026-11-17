@@ -63,6 +63,14 @@ jobs:
         with:
           ref: fix/filtro-sugestoes
           persist-credentials: true
+      - name: Obter controlador de IA atualizado da main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: agent-control
+          persist-credentials: false
+      - name: Validar sintaxe do controlador
+        run: python3 -m py_compile agent-control/scripts/agent_propose.py
       - name: Preparar Node
         uses: actions/setup-node@v4
         with:
@@ -107,7 +115,7 @@ jobs:
           for attempt in 1 2 3; do
             echo "::group::Tentativa $attempt de 3"
             git restore -- src/comparator_search.mjs
-            if python3 scripts/agent_propose.py && npm run verify; then
+            if python3 agent-control/scripts/agent_propose.py && npm run verify; then
               echo "Proposta validada pelos testes."
               echo "::endgroup::"
               exit 0
