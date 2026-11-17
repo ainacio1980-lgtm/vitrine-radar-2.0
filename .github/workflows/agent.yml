@@ -11,7 +11,7 @@ on:
       - main
       - fix/filtro-sugestoes
   schedule:
-    - cron: '17 9 * * *'
+    - cron: '17 */6 * * *'
 
 permissions:
   contents: write
