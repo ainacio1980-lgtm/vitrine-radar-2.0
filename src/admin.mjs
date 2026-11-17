@@ -74,6 +74,8 @@ export function adminPage(csrf) {
         <label>Loja<input id="merchant" maxlength="80" required></label>
         <label>Preço em reais<input id="price" inputmode="decimal" maxlength="22" placeholder="129,90" required></label>
         <label class="wide">Link da oferta<input id="url" type="url" maxlength="2048" placeholder="https://" required></label>
+        <label class="wide">Foto real (URL HTTPS da loja)<input id="image-url" type="url" maxlength="2048" placeholder="https://a-static.mlcdn.com.br/..."></label>
+        <small class="wide muted">A foto oficial é necessária para publicar; ao editar uma oferta pendente, acrescente a foto aqui.</small>
       </fieldset>
       <div class="form-actions"><button id="save-offer" class="primary" type="submit">Salvar como pendente</button><button id="cancel-edit" type="button" hidden>Cancelar edição</button><p id="form-message" class="feedback" role="status"></p></div>
     </form>
@@ -107,11 +109,11 @@ export function adminPage(csrf) {
   </section>
   <section class="card" aria-labelledby="import-title">
     <h2 id="import-title">Importar ofertas por CSV</h2>
-    <p class="muted">Cole dados do Excel ou selecione um arquivo CSV de até 50 produtos. Separador: ponto e vírgula. Colunas: titulo;categoria;loja;preco;url. Todas as ofertas entram como pendentes.</p>
+    <p class="muted">Cole dados do Excel ou selecione um arquivo CSV de até 50 produtos. Separador: ponto e vírgula. Colunas: titulo;categoria;loja;preco;url;foto. Foto é opcional na importação, mas obrigatória para publicar. Todas as ofertas entram como pendentes.</p>
     <form id="import-form">
       <fieldset class="fields" id="import-fields">
         <label class="wide">Arquivo CSV (opcional)<input id="import-file" type="file" accept=".csv,text/csv"></label>
-        <label class="wide">Dados CSV<textarea id="import-text" rows="5" placeholder="titulo;categoria;loja;preco;url"></textarea></label>
+        <label class="wide">Dados CSV<textarea id="import-text" rows="5" placeholder="titulo;categoria;loja;preco;url;foto"></textarea></label>
       </fieldset>
       <div class="form-actions"><button id="import-submit" class="primary" type="submit">Importar para revisão</button><p class="feedback" role="status" id="import-message"></p></div>
     </form>
@@ -195,10 +197,11 @@ export function adminPage(csrf) {
   function beginEdit(offer) {
     editingOffer = {
       title: offer.title, category: offer.category, merchant: offer.merchant,
-      price_cents: offer.price_cents, url: offer.url, status: offer.status, id: offer.id
+      price_cents: offer.price_cents, url: offer.url, image_url: offer.image_url || null, status: offer.status, id: offer.id
     };
     for (const key of ['title', 'category', 'merchant', 'url']) byId(key).value = offer[key];
     byId('price').value = (offer.price_cents / 100).toFixed(2).replace('.', ',');
+    byId('image-url').value = offer.image_url || '';
     byId('new-title').textContent = 'Editar oferta #' + offer.id;
     byId('save-offer').textContent = 'Salvar alterações e enviar para aprovação';
     byId('cancel-edit').hidden = false;
@@ -646,7 +649,8 @@ export function adminPage(csrf) {
         category: byId('category').value,
         merchant: byId('merchant').value,
         price_cents: priceInCents(byId('price').value),
-        url: byId('url').value
+        url: byId('url').value,
+        image_url: byId('image-url').value
       };
       const wasEditing = Boolean(editingOffer);
       if (wasEditing) {
@@ -701,6 +705,7 @@ export function adminPage(csrf) {
     if (fields.some(x => x === undefined) || new Set(fields).size !== 5) {
       throw Error('Cabeçalho esperado: titulo;categoria;loja;preco;url.');
     }
+    const pictureColumn = pick('foto', 'imagem', 'image_url', 'foto_url');
     if (lines.length > 50) throw Error('Limite de 50 ofertas por importação.');
     return lines.map((line, index) => {
       const cells = splitCsvLine(line);
@@ -708,7 +713,7 @@ export function adminPage(csrf) {
       return {
         title: cells[fields[0]], category: cells[fields[1]],
         merchant: cells[fields[2]], price_cents: priceInCents(cells[fields[3]]),
-        url: cells[fields[4]]
+        url: cells[fields[4]], image_url: pictureColumn === undefined ? '' : cells[pictureColumn]
       };
     });
   }
