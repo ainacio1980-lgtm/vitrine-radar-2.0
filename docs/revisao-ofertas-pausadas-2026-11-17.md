@@ -38,3 +38,24 @@ Consulta D1 de produção dos IDs 32 (Mercado Livre) e 36 (Shopee):
 - URL do ID 32 aponta diretamente para `www.mercadolivre.com.br`; URL do ID 36 aponta diretamente para `shopee.com.br`. Nenhuma das duas foi demonstrada como link rastreado de afiliado.
 
 **Decisão:** manter ambos pausados. Solicitar ou recuperar URLs de afiliado comprovadas e confirmar dimensões do produto Shopee, preços e estoque antes de eventual comparação/publicação. Não inventar links nem inferir comissão.
+
+## Auditoria agregada de classificação de links
+
+Consulta D1 de produção (somente leitura): entre as **49** ofertas pausadas com preço positivo e imagem cadastrada, **39** possuem `offer_link_meta.kind = retailer_direct` e **10** não possuem classificação registrada. Nenhuma das duas categorias comprova rastreamento de afiliado.
+
+Distribuição completa da classificação:
+
+| Status | Loja | Classificação | Quantidade |
+|---|---|---|---:|
+| approved | Amazon | amazon_tagged | 1 |
+| approved | Magalu | sem classificação | 69 |
+| approved | Mercado Livre | sem classificação | 10 |
+| paused | Amazon | amazon_tagged | 18 |
+| paused | Magalu | retailer_direct | 14 |
+| paused | Magalu | sem classificação | 8 |
+| paused | Mercado Livre | retailer_direct | 19 |
+| paused | Mercado Livre | sem classificação | 4 |
+| paused | Shopee | retailer_direct | 19 |
+| pending | Magalu | sem classificação | 55 |
+
+A classificação `amazon_tagged` indica presença de marcação na base, não validação independente de comissão. Ausência de classificação também não prova ausência de afiliação. Revisar URLs individualmente antes de atualizar status.
