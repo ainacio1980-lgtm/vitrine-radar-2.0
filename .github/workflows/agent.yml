@@ -5,8 +5,11 @@ on:
   push:
     branches:
       - main
-    paths:
-      - '.github/workflows/agent.yml'
+      - fix/filtro-sugestoes
+  pull_request:
+    branches:
+      - main
+      - fix/filtro-sugestoes
   schedule:
     - cron: '17 * * * *'
 
@@ -20,7 +23,19 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validar sintaxe e testes
+        run: npm run verify
+
   propose:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
