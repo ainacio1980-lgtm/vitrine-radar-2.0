@@ -1,0 +1,13 @@
+{
+  "name": "vitrine-radar-2",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node --check src/worker.mjs && node --check src/pages.mjs && node --check src/comparator.mjs && node --check src/catalog.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "verify": "npm run check && npm test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
