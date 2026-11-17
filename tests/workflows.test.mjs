@@ -29,7 +29,8 @@ test('testes completos seguem automatizados e verificacao avulsa nao duplica', (
   const full = workflow('validate.yml');
   const manual = workflow('verify.yml');
   assert.match(full, /branches: \[main\]/);
-  assert.match(full, /npx playwright install/);
+  assert.match(full, /mcr\.microsoft\.com\/playwright:v1\.64\.1-noble/);
+  assert.match(full, /npm install --no-save playwright@1\.64\.1/);
   assert.match(full, /node tests\/staging-browser\.mjs/);
   assert.match(manual, /workflow_dispatch/);
   assert.doesNotMatch(manual, /schedule:|fix\/filtro-sugestoes/);
