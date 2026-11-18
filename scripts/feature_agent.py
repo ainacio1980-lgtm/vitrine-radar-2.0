@@ -101,11 +101,11 @@ def verified_fallback(slug, original):
         if original.count(anchor) == 1 and "gray|grey" not in original:
             return original.replace(anchor, anchor + "\n" + addition.rstrip())
     elif slug == "search-color-translations":
-        anchor = '    .replace(/\b(white|branca)\b/g, "branco")'
-        addition = '''    .replace(/\bblue\b/g, "azul")
-    .replace(/\bgreen\b/g, "verde")
-    .replace(/\bred\b/g, "vermelho")
-    .replace(/\bpink\b/g, "rosa")'''
+        anchor = '    .replace(/\\b(white|branca)\\b/g, "branco")'
+        addition = '''    .replace(/\\bblue\\b/g, "azul")
+    .replace(/\\bgreen\\b/g, "verde")
+    .replace(/\\bred\\b/g, "vermelho")
+    .replace(/\\bpink\\b/g, "rosa")'''
         prior = "preto|branco|azul|verde|rosa|cinza|prata|dourado|pro|ultra|plus|max"
         updated = "preto|branco|azul|verde|rosa|vermelho|cinza|prata|dourado|pro|ultra|plus|max"
         if original.count(anchor) == 1 and original.count(prior) == 1 and "vermelho" not in original:
