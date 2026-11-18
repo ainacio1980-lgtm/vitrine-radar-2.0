@@ -5,6 +5,7 @@ alteracao de secrets nem edicao dos testes de aceite.
 """
 import os
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -121,8 +122,30 @@ def implement(slug):
         raise SystemExit("Proposta final insegura, sem writes: " + str(exc)) from exc
     source_path.write_text(candidate.rstrip() + "\n", encoding="utf-8")
     shutil.copyfile(spec_path, test_path)
+    try:
+        result = subprocess.run(
+            ["npm", "run", "verify"], capture_output=True, text=True, timeout=90,
+            check=False,
+        )
+        if result.returncode != 0:
+            fallback = verified_fallback(slug, before)
+            if fallback and fallback.rstrip() != candidate.rstrip():
+                validate_proposal(task["target"], before, fallback)
+                source_path.write_text(fallback.rstrip() + "\n", encoding="utf-8")
+                method = "fallback deterministico apos teste"
+                result = subprocess.run(
+                    ["npm", "run", "verify"], capture_output=True, text=True,
+                    timeout=90, check=False,
+                )
+        if result.returncode != 0:
+            raise ValueError("Nem IA nem fallback passaram no aceite fixo: " +
+                             result.stdout[-600:])
+    except Exception as exc:
+        source_path.write_text(before, encoding="utf-8")
+        test_path.unlink(missing_ok=True)
+        raise SystemExit("Alteracoes revertidas; testes falharam: " + str(exc)) from exc
     print("Funcionalidade proposta: " + slug + " via " + method +
-          " (aceite imutavel e testes obrigatorios).")
+          " (aceite imutavel e testes completos aprovados).")
 
 
 if __name__ == "__main__":
