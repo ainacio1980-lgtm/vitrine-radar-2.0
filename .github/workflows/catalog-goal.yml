@@ -1,0 +1,47 @@
+name: Vitrine Radar - progresso real da meta de 500 ofertas
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '31 */12 * * *'
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: vitrine-catalog-goal
+  cancel-in-progress: true
+jobs:
+  catalog-goal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Checar scripts e catalogo
+        run: npm run verify
+      - name: Calcular progresso real apenas com catalogo publico
+        run: |
+          set -euo pipefail
+          node scripts/catalog-goal.mjs --snapshot > /tmp/vitrine-goal.json
+          node -e "const s=require('/tmp/vitrine-goal.json');process.stdout.write('Ofertas publicadas: '+s.published+'/'+s.target+', faltam '+s.remaining+'\n')" >> "$GITHUB_STEP_SUMMARY"
+      - name: Sincronizar numero apenas se houver mudanca no GitHub
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh issue view 18 --repo "$GH_REPO" --json body --jq .body > /tmp/vitrine-goal-old.md
+          node scripts/catalog-goal.mjs --update-issue /tmp/vitrine-goal-old.md /tmp/vitrine-goal.json /tmp/vitrine-goal-new.md
+          if cmp -s /tmp/vitrine-goal-old.md /tmp/vitrine-goal-new.md; then
+            echo 'Meta inalterada; nenhuma edicao/aviso criado.'
+          else
+            gh issue edit 18 --repo "$GH_REPO" --body-file /tmp/vitrine-goal-new.md
+            echo 'Meta atualizada com quantidade comprovada no catalogo.'
+          fi

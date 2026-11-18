@@ -125,3 +125,13 @@ test('agente de funcionalidades usa fila fechada e testes de aceite nao editavei
   assert.match(script,/if test_path\.exists\(\):/);
   assert.match(workflow('validate.yml'),/test_\*agent_policy\.py/);
 });
+
+test('meta de 500 e calculada somente por API publica e sincronizada sem notificacao desnecessaria', () => {
+  const yaml=workflow('catalog-goal.yml');
+  assert.match(yaml,/cron: '31 \*\/12 \* \* \*'/);
+  assert.match(yaml,/node scripts\/catalog-goal\.mjs --snapshot/);
+  assert.match(yaml,/node scripts\/catalog-goal\.mjs --update-issue/);
+  assert.match(yaml,/cmp -s \/tmp\/vitrine-goal-old\.md \/tmp\/vitrine-goal-new\.md/);
+  assert.match(yaml,/gh issue edit 18/);
+  assert.doesNotMatch(yaml,/wrangler deploy|gh pr merge|npm install/);
+});
