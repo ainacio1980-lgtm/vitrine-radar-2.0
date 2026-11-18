@@ -40,6 +40,15 @@ FEATURES = (
         "goal": "Normalizar cores inglesas grey/gray para cinza, silver para prata, "
                 "gold/golden para dourado; preserve codigos de modelo, capacidade e busca atual.",
     },
+    {
+        "slug": "search-color-translations",
+        "target": "src/comparator_search.mjs",
+        "spec": "agent_specs/search-color-translations.test.mjs",
+        "test": "tests/search-color-translations.test.mjs",
+        "goal": "Reconhecer nomes de cores inglesas blue, green, red e pink como azul, verde, vermelho e rosa. "
+                "Preserve o nome de modelos como Redmi e Bluebird, as capacidades de memoria e a API. "
+                "Trate a cor vermelho como token completo, nao como prefixo.",
+    },
 )
 
 
@@ -91,6 +100,16 @@ def verified_fallback(slug, original):
 '''
         if original.count(anchor) == 1 and "gray|grey" not in original:
             return original.replace(anchor, anchor + "\n" + addition.rstrip())
+    elif slug == "search-color-translations":
+        anchor = '    .replace(/\b(white|branca)\b/g, "branco")'
+        addition = '''    .replace(/\bblue\b/g, "azul")
+    .replace(/\bgreen\b/g, "verde")
+    .replace(/\bred\b/g, "vermelho")
+    .replace(/\bpink\b/g, "rosa")'''
+        prior = "preto|branco|azul|verde|rosa|cinza|prata|dourado|pro|ultra|plus|max"
+        updated = "preto|branco|azul|verde|rosa|vermelho|cinza|prata|dourado|pro|ultra|plus|max"
+        if original.count(anchor) == 1 and original.count(prior) == 1 and "vermelho" not in original:
+            return original.replace(anchor, anchor + "\n" + addition).replace(prior, updated)
     return None
 
 
