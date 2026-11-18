@@ -1,5 +1,5 @@
 export function normalizeProductSearch(text) {
-  return String(text ?? "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase()
+  return String(text ?? "").normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase()
     .replace(/\b(\d+)\s*(gb|tb|mb|mah|hz|ml|mg|kg|cm|mm|g|l|m|v|w)\b/g, "$1$2")
     .replace(/[^a-z0-9]+/g, " ")
     .replace(/\b(black|preta)\b/g, "preto")
