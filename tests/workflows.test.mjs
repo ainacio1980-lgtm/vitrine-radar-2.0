@@ -66,6 +66,17 @@ test('o agente agenda inferencia local gratuita mesmo sem chave Gemini', () => {
   assert.doesNotMatch(yaml, /wrangler deploy|auto-merge|gh pr merge/);
 });
 
+test('recusa de proposta insegura nao gera repeticao nem codigo publicado', () => {
+  const yaml=workflow('agent.yml');
+  const python=readFileSync(new URL('../scripts/agent_propose.py',import.meta.url),'utf8');
+  assert.match(yaml, /model_status=0/);
+  assert.match(yaml, /model_status.*-eq 10/);
+  assert.match(yaml, /git restore -- "\$AI_TARGET"/);
+  assert.match(yaml, /GITHUB_STEP_SUMMARY/);
+  assert.match(python, /raise SystemExit\(10\)/);
+  assert.doesNotMatch(yaml, /gh pr merge|wrangler deploy/);
+});
+
 test('agente alterna responsabilidades com travas e evita cancelamentos por pushes', () => {
   const yaml=workflow('agent.yml');
   const verify=workflow('validate.yml');

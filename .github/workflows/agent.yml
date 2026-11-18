@@ -124,12 +124,22 @@ jobs:
           for attempt in 1 2 3; do
             echo "::group::Tentativa $attempt de 3 para $AI_TARGET"
             git restore -- "$AI_TARGET"
-            if python3 scripts/agent_propose.py && npm run verify; then
+            model_status=0
+            python3 scripts/agent_propose.py || model_status=$?
+            if [ "$model_status" -eq 10 ]; then
+              echo "::notice::Proposta recusada pelas regras de seguranca; preservando o original."
+              echo "### Proposta de IA rejeitada sem alteracoes" >> "$GITHUB_STEP_SUMMARY"
+              echo "Arquivo: $AI_TARGET. Regras de seguranca preservadas. Nenhum PR ou deploy." >> "$GITHUB_STEP_SUMMARY"
+              git restore -- "$AI_TARGET"
+              echo "::endgroup::"
+              exit 0
+            fi
+            if [ "$model_status" -eq 0 ] && npm run verify; then
               echo "Proposta validada pelos testes."
               echo "::endgroup::"
               exit 0
             fi
-            echo "::warning::Tentativa $attempt falhou; restaurando arquivo antes da proxima."
+            echo "::warning::Tentativa $attempt falhou (codigo $model_status); restaurando arquivo antes da proxima."
             echo "::endgroup::"
           done
           git restore -- "$AI_TARGET"

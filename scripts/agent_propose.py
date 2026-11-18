@@ -71,6 +71,10 @@ def run_model(target, original, task):
         "Se o arquivo estiver correto, retorne o arquivo SEM modificacoes. "
         "Nao adicione bibliotecas, rede, logins, imports dinamicos, URLs ou novos arquivos. "
         "Nao altere as exportacoes, filtros de seguranca ou formatos de dados. "
+        "Se o arquivo contem a lista productImageHosts, preserve A LISTA EXATAMENTE "
+        "como recebida: mesmos 20 dominios, mesma ordem e mesma formatacao. "
+        "Nao acrescente, remova nem reordene dominios. "
+        "Se nao puder respeitar estas regras, retorne o arquivo original inalterado. "
         "Retorne SOMENTE o arquivo JavaScript completo, sem markdown.\n"
         f"Arquivo: {target}\nTarefa: {task}\n"
         "Codigo atual:\n" + original
@@ -134,7 +138,11 @@ def main():
     try:
         validate_proposal(target_name, original, proposal)
     except ValueError as exc:
-        raise SystemExit("Proposta rejeitada: " + str(exc)) from exc
+        # Codigo do modelo foi bloqueado pelas regras locais: o funcionamento
+        # seguro foi preservado. Nao fazer tres chamadas iguais ao modelo.
+        print("::warning::Proposta de IA recusada pela politica: " + str(exc))
+        print("Arquivo original preservado. Nenhuma publicacao ou PR.")
+        raise SystemExit(10) from exc
     target.write_text(proposal.rstrip() + "\n", encoding="utf-8")
     print("Proposta limitada a " + target_name + "; testes e revisao de PR obrigatorios.")
 
