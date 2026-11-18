@@ -1,0 +1,37 @@
+name: Vitrine Radar - conferir commit implantado (sem deploy)
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Ambiente ja atualizado com o commit aprovado
+        type: choice
+        required: true
+        default: staging
+        options:
+          - staging
+          - production
+
+permissions:
+  contents: read
+
+jobs:
+  verify-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Testar codigo do commit fixado no workflow
+        run: npm run verify
+      - name: Rejeitar Worker com SHA ou D1 divergente
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+          TARGET_ENV: ${{ inputs.target }}
+        run: node scripts/verify-staging-release.mjs "$EXPECTED_SHA" "$TARGET_ENV"
+      - name: Declarar limite do teste
+        run: echo 'SHA e saude confirmados, mas somente os metadados fornecidos pelo Worker. A pipeline futura deve provar origem do artefato e implantar em staging antes deste teste.'
