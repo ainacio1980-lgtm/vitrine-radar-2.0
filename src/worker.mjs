@@ -587,7 +587,8 @@ export default {
       const publicHeaders = { ...authHeaders, "access-control-allow-origin": url.origin };
       if (path === "/api/health") {
         const { total } = await env.DB.prepare("SELECT COUNT(*) AS total FROM offers").first();
-        return Response.json({ ok: true, service: "vitrine-radar", database: "connected", offers: total }, { headers: publicHeaders });
+        const releaseSha = typeof env.RELEASE_SHA === "string" && /^[0-9a-f]{40}$/.test(env.RELEASE_SHA) ? env.RELEASE_SHA : null;
+        return Response.json({ ok: true, service: "vitrine-radar", database: "connected", offers: total, release_sha: releaseSha }, { headers: publicHeaders });
       }
       if (path === "/api/compare") {
         if (request.method !== "GET") return Response.json({ error: "Método inválido." }, { status: 405, headers: publicHeaders });
