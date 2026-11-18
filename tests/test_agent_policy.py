@@ -1,6 +1,9 @@
 """Testes da politica local e restrita do agente autonomo."""
 import unittest
-from scripts.agent_propose import choose_task, exported_api, validate_proposal, TASKS
+import os
+from unittest.mock import patch
+from pathlib import Path
+from scripts.agent_propose import choose_task, exported_api, validate_proposal, TASKS, main
 
 
 class AgentPolicyTests(unittest.TestCase):
@@ -35,6 +38,22 @@ class AgentPolicyTests(unittest.TestCase):
         proposed = original.replace('a-static.mlcdn.com.br', 'outro.dominio.com.br')
         with self.assertRaisesRegex(ValueError, "dominios"):
             validate_proposal("src/product_images.mjs", original, proposed)
+
+    def test_rejeicao_do_modelo_preserva_arquivo_e_sinaliza_sem_repetir(self):
+        original = (
+            'export const productImageHosts = ["a-static.mlcdn.com.br"];\n'
+            'export function safeProductImageUrl(x) { return x; }\n'
+        )
+        unsafe = original.replace("a-static.mlcdn.com.br", "outro.dominio.com.br")
+        with patch.dict(os.environ, {"AI_TARGET": "src/product_images.mjs"}), \
+             patch("scripts.agent_propose.run_model", return_value=unsafe) as model, \
+             patch.object(Path, "read_text", return_value=original), \
+             patch.object(Path, "write_text") as write:
+            with self.assertRaises(SystemExit) as error:
+                main()
+        self.assertEqual(error.exception.code, 10)
+        model.assert_called_once()
+        write.assert_not_called()
 
     def test_auditoria_publica_deve_manter_paginacao(self):
         original = (
