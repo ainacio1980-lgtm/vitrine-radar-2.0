@@ -59,9 +59,10 @@ jobs:
         run: |
           set -euo pipefail
           open=$(gh pr list --base main --state open --limit 100 --json headRefName --jq '[.[] | select(.headRefName | startswith("agent/feature-"))] | length')
-          if [ "$open" -gt 0 ]; then
+          existing=$(git ls-remote --heads origin "refs/heads/agent/feature-${{ steps.feature.outputs.slug }}-*" | head -n 1)
+          if [ "$open" -gt 0 ] || [ -n "$existing" ]; then
             echo 'skip=true' >> "$GITHUB_OUTPUT"
-            echo 'Uma funcionalidade aguarda revisao. Nenhum trabalho duplicado.'
+            echo 'Uma funcionalidade ja possui PR ou branch enviada; aguardar revisao para nao duplicar.'
           else
             echo 'skip=false' >> "$GITHUB_OUTPUT"
           fi
@@ -126,6 +127,10 @@ jobs:
           git add -- "$TARGET" "$TEST_FILE"
           git commit -m "feat(agent): implementar $TASK com teste de aceite imutavel"
           git push origin "$branch"
-          gh pr create --draft --base main --head "$branch" \
+          if ! gh pr create --draft --base main --head "$branch" \
             --title "Funcionalidade autonoma: $TASK" \
-            --body "Implementacao pelo Qwen local gratuito com escopo em \`$TARGET\`. Testes de aceite fixos copiados de \`agent_specs/\`, nao editados pela IA. Nao faz deploy nem merge; exige CI e revisao antes da publicacao."
+            --body "Implementacao pelo Qwen local gratuito com escopo em \`$TARGET\`. Testes de aceite fixos copiados de \`agent_specs/\`, nao editados pela IA. Nao faz deploy nem merge; exige CI e revisao antes da publicacao."; then
+            echo "::warning::Branch validada enviada, mas GitHub Actions nao pode abrir PR. A ponte GitHub do ChatGPT podera revisar e abrir a PR."
+            echo "### Branch publicada, Pull Request pendente" >> "$GITHUB_STEP_SUMMARY"
+            echo "Branch: $branch. Restricao GitHub Actions: criar PR requer permissao adicional no repositorio. Nenhum deploy ou merge." >> "$GITHUB_STEP_SUMMARY"
+          fi
