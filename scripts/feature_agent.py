@@ -48,6 +48,35 @@ def feature_for(slug):
     raise ValueError("Funcionalidade fora da lista permitida")
 
 
+def verified_fallback(slug, original):
+    """Edicoes deterministicas limitadas a ancoras exatas; caso contrario nao altera nada."""
+    if slug == "search-unicode-width":
+        before = 'String(text ?? "").normalize("NFD")'
+        after = 'String(text ?? "").normalize("NFKD")'
+        if original.count(before) == 1 and "NFKD" not in original:
+            return original.replace(before, after)
+    elif slug == "catalog-duplicate-affiliate-link":
+        before = "  const seen = new Set();"
+        validated = """      try {
+        affiliateDestinationForMarketplace(offer.merchant, offer.url);
+      } catch {
+        throw new Error('Link de afiliado invalido para a loja: ' + id);
+      }
+"""
+        changed = """      let affiliate;
+      try {
+        affiliate = affiliateDestinationForMarketplace(offer.merchant, offer.url);
+      } catch {
+        throw new Error('Link de afiliado invalido para a loja: ' + id);
+      }
+      if (seenUrls.has(affiliate.href)) throw new Error('Link afiliado duplicado: ' + id);
+      seenUrls.add(affiliate.href);
+"""
+        if original.count(before) == 1 and original.count(validated) == 1 and "seenUrls" not in original:
+            return original.replace(before, before + "\n  const seenUrls = new Set();").replace(validated, changed)
+    return None
+
+
 def implement(slug):
     task = feature_for(slug)
     source_path = Path(task["target"])
@@ -72,17 +101,28 @@ def implement(slug):
         raise SystemExit("Modelo local indisponivel: " + str(exc)) from exc
     if candidate.startswith("```"):
         candidate = "\n".join(candidate.splitlines()[1:-1]).strip()
+    method = "modelo local"
     if candidate == before.strip():
-        print("::notice::Modelo nao implementou a tarefa; nenhuma alteracao.")
+        candidate = verified_fallback(slug, before)
+        method = "fallback deterministico"
+    else:
+        try:
+            validate_proposal(task["target"], before, candidate)
+        except ValueError as exc:
+            print("::warning::IA recusada pela politica: " + str(exc))
+            candidate = verified_fallback(slug, before)
+            method = "fallback deterministico"
+    if not candidate or candidate.strip() == before.strip():
+        print("::notice::Nenhuma implementacao segura disponivel; original preservado.")
         raise SystemExit(10)
     try:
         validate_proposal(task["target"], before, candidate)
     except ValueError as exc:
-        print("::warning::Proposta recusada: " + str(exc))
-        raise SystemExit(10) from exc
+        raise SystemExit("Proposta final insegura, sem writes: " + str(exc)) from exc
     source_path.write_text(candidate.rstrip() + "\n", encoding="utf-8")
     shutil.copyfile(spec_path, test_path)
-    print("Funcionalidade proposta: " + slug + " (aceite imutavel e testes obrigatorios).")
+    print("Funcionalidade proposta: " + slug + " via " + method +
+          " (aceite imutavel e testes obrigatorios).")
 
 
 if __name__ == "__main__":
