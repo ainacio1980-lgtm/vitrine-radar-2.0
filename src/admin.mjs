@@ -133,7 +133,7 @@ export function adminPage(csrf) {
   </section>
   <section class="card" aria-labelledby="import-title">
     <h2 id="import-title">Importar ofertas por CSV</h2>
-    <p class="muted">Cole dados do Excel ou selecione um arquivo CSV de até 50 produtos. Separador: ponto e vírgula. Colunas: titulo;categoria;loja;preco;url;foto. Foto é opcional na importação, mas obrigatória para publicar. Todas as ofertas entram como pendentes.</p>
+    <p class="muted">Cole dados do Excel ou selecione um arquivo CSV de até 500 produtos. O painel importa automaticamente em lotes de 50, mostra resultados parciais e nunca publica sem revisão. Separador: ponto e vírgula. Colunas: titulo;categoria;loja;preco;url;foto. Foto é opcional na importação, mas obrigatória para publicar. Todas as ofertas entram como pendentes.</p>
     <form id="import-form">
       <fieldset class="fields" id="import-fields">
         <label class="wide">Arquivo CSV (opcional)<input id="import-file" type="file" accept=".csv,text/csv"></label>
@@ -788,8 +788,8 @@ export function adminPage(csrf) {
       throw Error('Cabeçalho esperado: titulo;categoria;loja;preco;url.');
     }
     const pictureColumn = pick('foto', 'imagem', 'image_url', 'foto_url');
-    if (lines.length > 50) throw Error('Limite de 50 ofertas por importação.');
-    return lines.map((line, index) => {
+    if (lines.length > 500) throw Error('Limite de 500 ofertas por arquivo CSV.');
+    const rows = lines.map((line, index) => {
       const cells = splitCsvLine(line);
       if (cells.length !== header.length) throw Error('Quantidade de colunas incorreta na linha ' + (index + 2) + '.');
       return {
@@ -798,6 +798,10 @@ export function adminPage(csrf) {
         url: cells[fields[4]], image_url: pictureColumn === undefined ? '' : cells[pictureColumn]
       };
     });
+    const urls = rows.map(row => row.url.trim());
+    if (urls.some(url => !url)) throw Error('Todas as ofertas precisam de URL própria.');
+    if (new Set(urls).size !== urls.length) throw Error('O CSV contém URLs repetidas. Revise o arquivo antes da importação.');
+    return rows;
   }
 
   byId('import-form').addEventListener('submit', async event => {
@@ -805,21 +809,38 @@ export function adminPage(csrf) {
     feedback('import-message');
     byId('import-fields').disabled = true;
     byId('import-submit').disabled = true;
+    let processed = 0, imported = 0, rejected = 0, completedBatches = 0;
     try {
       const selected = byId('import-file').files[0];
-      if (selected && selected.size > 128 * 1024) throw Error('Arquivo CSV excede 128 KB.');
+      if (selected && selected.size > 512 * 1024) throw Error('Arquivo CSV excede 512 KB.');
       const text = selected ? await selected.text() : byId('import-text').value;
       const rows = parseCsv(text);
-      const result = await api('/api/admin/import', 'POST', { rows });
+      const problems = [];
+      for (let offset = 0; offset < rows.length; offset += 50) {
+        const result = await api('/api/admin/import', 'POST', { rows: rows.slice(offset, offset + 50) });
+        completedBatches++;
+        processed += result.total;
+        imported += result.imported;
+        rejected += result.rejected;
+        for (const item of result.errors.slice(0, 3)) {
+          if (problems.length < 6) problems.push(' Linha ' + (offset + item.line) + ': ' + item.error);
+        }
+        feedback('import-message', 'Processados ' + processed + ' de ' + rows.length +
+          '; ' + imported + ' novos pendentes, ' + rejected + ' rejeitados.');
+      }
       byId('status-filter').value = 'pending';
       currentPage = 1;
       await Promise.all([refreshCatalog(), refreshMetrics()]);
       event.target.reset();
-      const summary = result.imported + ' importadas e ' + result.rejected + ' rejeitadas. Lote #' + result.batch_id + '.';
-      const details = result.errors.slice(0, 3).map(x => ' Linha ' + x.line + ': ' + x.error).join(' ');
-      feedback('import-message', summary + details, result.rejected > 0);
+      feedback('import-message', 'Concluído: ' + imported + ' ofertas pendentes adicionadas, ' +
+        rejected + ' rejeitadas em ' + completedBatches + ' lotes. Nenhuma foi publicada.' +
+        problems.join(''), rejected > 0);
     } catch (error) {
-      feedback('import-message', error.message, true);
+      feedback('import-message', (completedBatches ?
+        'Importação parcial: ' + imported + ' adicionadas, ' + rejected + ' rejeitadas em ' +
+        completedBatches + ' lotes. Revise o catálogo antes de reenviar. Erro: ' : '') +
+        error.message, true);
+      if (completedBatches) await Promise.allSettled([refreshCatalog(), refreshMetrics()]);
     } finally {
       byId('import-fields').disabled = false;
       byId('import-submit').disabled = false;
