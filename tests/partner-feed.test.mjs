@@ -47,6 +47,10 @@ test("deduplica links existentes e repetidos sem cadastrar produto ficticio", ()
   const r = preparePartnerExport({ ...base, items: [item, item] }, opts);
   assert.equal(r.report.accepted, 1);
   assert.equal(r.report.duplicates, 1);
+  const differentAffiliateSameSku = preparePartnerExport({ ...base, items: [
+    item, { ...item, affiliate_url: "https://www.magazinevoce.com.br/magazinevitrineradar/outro/p/123456701/ed/cafe/" },
+  ] }, opts);
+  assert.equal(differentAffiliateSameSku.report.duplicates, 1);
   const existing = preparePartnerExport(base, {
     ...opts, existingUrls: [item.affiliate_url],
   });
@@ -60,7 +64,10 @@ test("formatos declarados de Shopee e Mercado Livre geram arquivos separados", (
     ["Mercado Livre", "https://meli.la/1E9h7AZ"],
   ];
   for (const [merchant, affiliate_url] of items) {
-    const input = { ...base, merchant, items: [{ ...base.items[0], affiliate_url }] };
+    const source_reference = merchant === "Shopee"
+      ? "https://affiliate.shopee.com.br/"
+      : "https://www.mercadolivre.com.br/";
+    const input = { ...base, merchant, source_reference, items: [{ ...base.items[0], affiliate_url }] };
     const result = preparePartnerExport(input, opts);
     assert.equal(result.report.accepted, 1, merchant);
     assert.equal(result.accepted[0].merchant, merchant);
@@ -71,6 +78,8 @@ test("limita 500 registros e exige origem oficial declarada sem autorizar public
   assert.equal(PARTNER_EXPORT_LIMIT, 500);
   assert.throws(() => preparePartnerExport({ ...base, items: Array(501).fill(base.items[0]) }, opts), /500/);
   assert.throws(() => preparePartnerExport({ ...base, source_type: "scraped_html" }, opts), /origem oficial/);
-  assert.throws(() => preparePartnerExport({ ...base, source_reference: "http://example.com" }, opts), /referencia HTTPS/);
+  assert.throws(() => preparePartnerExport({ ...base, source_reference: "http://example.com" }, opts), /origem oficial/);
+  assert.throws(() => preparePartnerExport({ ...base, source_reference: "https://www.magazinevoce.com.br.evil.test/" }, opts), /origem oficial/);
+  assert.equal(preparePartnerExport({ ...base, items: [{ ...base.items[0], title: "x".repeat(161) }] }, opts).report.rejected, 1);
   assert.throws(() => preparePartnerExport({ ...base, items: [] }, opts), /1 a 500/);
 });
