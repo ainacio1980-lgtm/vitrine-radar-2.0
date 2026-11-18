@@ -6,7 +6,7 @@ const offer = (id, changes = {}) => ({
   id, title: 'Produto exemplo ' + id, category: 'Eletronicos',
   merchant: 'Magalu', price_cents: 12345,
   image_url: 'https://a-static.mlcdn.com.br/a.jpg',
-  url: 'https://www.magazinevoce.com.br/magazinevitrineradar/produto-exemplo/p/123456700/aa/bb/',
+  url: 'https://www.magazinevoce.com.br/magazinevitrineradar/produto-exemplo/p/' + (123456700 + id) + '/aa/bb/',
   ...changes,
 });
 const responder = pages => async url => {
