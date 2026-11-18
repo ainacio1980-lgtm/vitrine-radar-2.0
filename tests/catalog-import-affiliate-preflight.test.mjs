@@ -15,6 +15,7 @@ function fakeDb() {
       return {
         bind(...args) {
           return {
+            sql, args,
             async run() {
               if (sql.includes('INSERT INTO offer_import_batches')) return { meta: { last_row_id: 9, changes: 1 } };
               if (sql.includes('INSERT INTO offer_import_rows')) {
