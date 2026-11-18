@@ -1,10 +1,19 @@
 """Backlog funcional fechado e testes fixos em vez de prompts livres de issues."""
 import unittest
+import subprocess
+import sys
 from pathlib import Path
 from unittest.mock import patch
 from scripts.feature_agent import FEATURES, feature_for, next_feature, implement
 
 class FeatureAgentPolicyTests(unittest.TestCase):
+    def test_controlador_executa_em_modo_script_no_runner(self):
+        result = subprocess.run(
+            [sys.executable, "scripts/feature_agent.py", "--next"],
+            check=True, capture_output=True, text=True, timeout=10,
+        )
+        self.assertIn("search-unicode-width|src/comparator_search.mjs|", result.stdout)
+
     def test_lista_fechada_e_arquivos_nao_sensiveis(self):
         names = [x['slug'] for x in FEATURES]
         self.assertEqual(len(names), len(set(names)))
