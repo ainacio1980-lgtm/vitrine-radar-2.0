@@ -5,6 +5,9 @@ export function normalizeProductSearch(text) {
     .replace(/[^a-z0-9]+/g, " ")
     .replace(/\b(black|preta)\b/g, "preto")
     .replace(/\b(white|branca)\b/g, "branco")
+    .replace(/\b(gray|grey)\b/g, "cinza")
+    .replace(/\bsilver\b/g, "prata")
+    .replace(/\b(gold|golden)\b/g, "dourado")
     .trim();
 }
 
