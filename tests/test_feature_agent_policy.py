@@ -4,9 +4,22 @@ import subprocess
 import sys
 from pathlib import Path
 from unittest.mock import patch
-from scripts.feature_agent import FEATURES, feature_for, next_feature, implement
+from scripts.feature_agent import FEATURES, feature_for, next_feature, implement, verified_fallback
 
 class FeatureAgentPolicyTests(unittest.TestCase):
+    def test_fallback_concreto_preserva_regras_e_libera_funcionalidades(self):
+        search = Path("src/comparator_search.mjs").read_text(encoding="utf-8")
+        result = verified_fallback("search-unicode-width", search)
+        self.assertIsNotNone(result)
+        self.assertIn('.normalize("NFKD")', result)
+        self.assertIn('export function normalizeProductSearch', result)
+        audit = Path("scripts/check-public-catalog.mjs").read_text(encoding="utf-8")
+        result = verified_fallback("catalog-duplicate-affiliate-link", audit)
+        self.assertIsNotNone(result)
+        self.assertIn("seenUrls.add(affiliate.href)", result)
+        self.assertIn("affiliateDestinationForMarketplace", result)
+        self.assertIsNone(verified_fallback("outra-tarefa", audit))
+
     def test_controlador_executa_em_modo_script_no_runner(self):
         result = subprocess.run(
             [sys.executable, "scripts/feature_agent.py", "--next"],
