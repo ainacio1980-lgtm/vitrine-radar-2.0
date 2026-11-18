@@ -40,7 +40,7 @@ export async function generateShopeeAffiliateLink(options, originUrl) {
   const query = "mutation GenerateShortLink($originUrl: String!) { generateShortLink(input: { originUrl: $originUrl }) { shortLink } }";
   const data = await shopeeGraphql({ ...options, query, variables: { originUrl: url.href } });
   const shortLink = data.generateShortLink?.shortLink;
-  if (typeof shortLink !== "string" || !/^https:\/\/s\.shopee\.com\.br\//.test(shortLink)) {
+  if (typeof shortLink !== "string" || !/^https:\/\/(?:s\.shopee\.com\.br|shopee\.ee)\//.test(shortLink)) {
     throw new Error("Resposta sem link de afiliado Shopee esperado.");
   }
   return { url: shortLink, status: "pending_review" };
