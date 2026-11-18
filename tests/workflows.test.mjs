@@ -135,3 +135,13 @@ test('meta de 500 e calculada somente por API publica e sincronizada sem notific
   assert.match(yaml,/gh issue edit 18/);
   assert.doesNotMatch(yaml,/wrangler deploy|gh pr merge|npm install/);
 });
+
+test('agente evita branches de funcionalidades duplicadas e nao perde resultado se GitHub negar PR', () => {
+  const yaml = workflow('feature-agent.yml');
+  assert.match(yaml,/git ls-remote --heads origin/);
+  assert.match(yaml,/feature-\$\{\{ steps\.feature\.outputs\.slug \}\}-\*/);
+  assert.match(yaml,/if ! gh pr create --draft --base main --head/);
+  assert.match(yaml,/GITHUB_STEP_SUMMARY/);
+  assert.match(yaml,/Nenhum deploy ou merge/);
+  assert.doesNotMatch(yaml,/gh pr merge|wrangler deploy/);
+});
