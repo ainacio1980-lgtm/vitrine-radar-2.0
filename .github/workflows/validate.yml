@@ -15,8 +15,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: python3 -m py_compile scripts/agent_propose.py
-      - run: python3 -m unittest discover -s tests -p 'test_agent_policy.py' -v
+      - run: python3 -m py_compile scripts/agent_propose.py scripts/feature_agent.py
+      - run: python3 -m unittest discover -s tests -p 'test_*agent_policy.py' -v
       - run: npm run verify
 
   staging-smoke:
