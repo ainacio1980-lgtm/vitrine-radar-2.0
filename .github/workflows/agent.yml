@@ -11,6 +11,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  issues: write
 
 concurrency:
   group: vitrine-radar-agent
@@ -168,3 +169,41 @@ jobs:
           git commit -m "fix(agent): proposta de melhoria segura para $AI_TARGET"
           git push origin "$branch"
           gh pr create --base main --head "$branch" --title "Proposta automatica: auditoria de $AI_TARGET" --body "Gerado pelo agente local em escopo restrito: $AI_TARGET. Testes npm run verify executados. Revisao humana obrigatoria. Nao publica ou altera o banco automaticamente."
+
+  incident:
+    needs: [verify, verify_homologation, propose]
+    if: always() && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      issues: write
+    steps:
+      - name: Registrar incidente de agente
+        if: needs.verify.result == 'failure' || needs.verify_homologation.result == 'failure' || needs.propose.result == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          title='[Vitrine Radar] Falha do agente autonomo'
+          existing=$(gh issue list --repo "$GH_REPO" --state open --limit 100 --json number,title --jq '.[] | select(.title == "[Vitrine Radar] Falha do agente autonomo") | .number' | head -n 1)
+          if [ -n "$existing" ]; then
+            echo "Incidente #$existing permanece aberto. Verifique a execucao atual."
+          else
+            gh issue create --repo "$GH_REPO" --title "$title" --body "O agente encontrou uma falha de testes, homologacao ou execucao. [Log da execucao](https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}). Nenhum deploy automatico foi realizado. Esta issue sera encerrada apos uma execucao completa com sucesso."
+          fi
+      - name: Encerrar incidente do agente apos sucesso
+        if: needs.verify.result == 'success' && needs.verify_homologation.result == 'success' && needs.propose.result == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          existing=$(gh issue list --repo "$GH_REPO" --state open --limit 100 --json number,title --jq '.[] | select(.title == "[Vitrine Radar] Falha do agente autonomo") | .number' | head -n 1)
+          if [ -n "$existing" ]; then
+            gh issue close "$existing" --repo "$GH_REPO" --comment "Agente e validacoes recuperados. [Execucao confirmada](https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})."
+          else
+            echo 'Agente operacional, sem incidente aberto.'
+          fi
