@@ -108,3 +108,20 @@ test('agente registra falhas reais uma vez e encerra incidentes apos recuperacao
   assert.match(yaml, /\[Vitrine Radar\] Falha do agente autonomo/);
   assert.doesNotMatch(yaml, /gh pr merge|wrangler deploy/);
 });
+
+test('agente de funcionalidades usa fila fechada e testes de aceite nao editaveis', () => {
+  const yaml=workflow('feature-agent.yml');
+  const script=readFileSync(new URL('../scripts/feature_agent.py',import.meta.url),'utf8');
+  assert.match(yaml,/cron: '43 \*\/6 \* \* \*'/);
+  assert.match(yaml,/python3 scripts\/feature_agent\.py --next/);
+  assert.match(yaml,/python3 scripts\/feature_agent\.py --implement/);
+  assert.match(yaml,/npm run verify/);
+  assert.match(yaml,/gh pr create --draft --base main/);
+  assert.match(yaml,/git add -- "\$TARGET" "\$TEST_FILE"/);
+  assert.doesNotMatch(yaml,/gh pr merge|wrangler deploy|cloudflare.*deploy/);
+  assert.match(script,/shutil\.copyfile\(spec_path, test_path\)/);
+  assert.match(script,/validate_proposal\(/);
+  assert.match(script,/FEATURES =/);
+  assert.match(script,/if test_path\.exists\(\):/);
+  assert.match(workflow('validate.yml'),/test_\*agent_policy\.py/);
+});
