@@ -32,6 +32,14 @@ FEATURES = (
         "goal": "Rejeitar URLs de afiliado duplicadas entre ofertas publicadas, mesmo quando "
                 "possuem IDs diferentes e aparecem em paginas distintas. Nao fazer writes.",
     },
+    {
+        "slug": "search-color-synonyms",
+        "target": "src/comparator_search.mjs",
+        "spec": "agent_specs/search-color-synonyms.test.mjs",
+        "test": "tests/search-color-synonyms.test.mjs",
+        "goal": "Normalizar cores inglesas grey/gray para cinza, silver para prata, "
+                "gold/golden para dourado; preserve codigos de modelo, capacidade e busca atual.",
+    },
 )
 
 
@@ -75,6 +83,14 @@ def verified_fallback(slug, original):
 """
         if original.count(before) == 1 and original.count(validated) == 1 and "seenUrls" not in original:
             return original.replace(before, before + "\n  const seenUrls = new Set();").replace(validated, changed)
+    elif slug == "search-color-synonyms":
+        anchor = '    .replace(/\\b(white|branca)\\b/g, "branco")'
+        addition = '''    .replace(/\\b(gray|grey)\\b/g, "cinza")
+    .replace(/\\bsilver\\b/g, "prata")
+    .replace(/\\b(gold|golden)\\b/g, "dourado")
+'''
+        if original.count(anchor) == 1 and "gray|grey" not in original:
+            return original.replace(anchor, anchor + "\n" + addition.rstrip())
     return None
 
 
