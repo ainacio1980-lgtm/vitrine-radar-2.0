@@ -125,7 +125,17 @@ export async function importOffers(db, actor, input) {
   const errors = [];
   for (let index = 0; index < input.rows.length; index++) {
     const row = input.rows[index];
-    const outcome = await createOffer(db, actor, row);
+    // Um CSV de afiliados nao deve criar registros com links comuns de varejo.
+    // Verificar o formato nao confirma comissao, preco atual ou estoque.
+    let affiliateFormatValid = true;
+    try {
+      affiliateDestinationForMarketplace(row.merchant, row.url);
+    } catch {
+      affiliateFormatValid = false;
+    }
+    const outcome = affiliateFormatValid
+      ? await createOffer(db, actor, row)
+      : { error: "Link nao corresponde ao formato de afiliado da loja.", status: 422 };
     const accepted = !outcome.error;
     if (accepted) valid++;
     else {
