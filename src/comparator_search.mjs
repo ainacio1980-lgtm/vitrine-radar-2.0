@@ -1,3 +1,4 @@
+// NFKD folds full-width Unicode letters and digits into comparable ASCII tokens.
 export function normalizeProductSearch(text) {
   return String(text ?? "").normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase()
     .replace(/\b(\d+)\s*(gb|tb|mb|mah|hz|ml|mg|kg|cm|mm|g|l|m|v|w)\b/g, "$1$2")
