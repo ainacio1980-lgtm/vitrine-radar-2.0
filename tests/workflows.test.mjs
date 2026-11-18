@@ -94,3 +94,17 @@ test('agente alterna responsabilidades com travas e evita cancelamentos por push
   assert.match(verify, /python3 -m unittest discover/);
   assert.doesNotMatch(yaml, /gh pr merge|wrangler deploy/);
 });
+
+test('agente registra falhas reais uma vez e encerra incidentes apos recuperacao', () => {
+  const yaml = workflow('agent.yml');
+  assert.match(yaml, /issues: write/);
+  assert.match(yaml, /needs: \[verify, verify_homologation, propose\]/);
+  assert.match(yaml, /if: always\(\) && github.ref == 'refs\/heads\/main'/);
+  assert.match(yaml, /needs\.propose\.result == 'failure'/);
+  assert.match(yaml, /needs\.propose\.result == 'success'/);
+  assert.match(yaml, /gh issue list --repo "\$GH_REPO" --state open/);
+  assert.match(yaml, /gh issue create --repo "\$GH_REPO"/);
+  assert.match(yaml, /gh issue close "\$existing" --repo "\$GH_REPO"/);
+  assert.match(yaml, /\[Vitrine Radar\] Falha do agente autonomo/);
+  assert.doesNotMatch(yaml, /gh pr merge|wrangler deploy/);
+});
