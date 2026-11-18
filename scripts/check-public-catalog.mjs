@@ -5,6 +5,7 @@ export async function checkCatalog(origin, fetcher = fetch) {
   const base = new URL(origin);
   if (base.protocol !== 'https:') throw new Error('Catalogo requer HTTPS');
   const seen = new Set();
+  const seenUrls = new Set();
   let offset = 0;
   let pages = 0;
   for (; pages < 100; pages++) {
@@ -34,11 +35,14 @@ export async function checkCatalog(origin, fetcher = fetch) {
       if (!safeProductImageUrl(offer.image_url)) {
         throw new Error('Foto fora de dominio HTTPS autorizado: ' + id);
       }
+      let affiliate;
       try {
-        affiliateDestinationForMarketplace(offer.merchant, offer.url);
+        affiliate = affiliateDestinationForMarketplace(offer.merchant, offer.url);
       } catch {
         throw new Error('Link de afiliado invalido para a loja: ' + id);
       }
+      if (seenUrls.has(affiliate.href)) throw new Error('Link afiliado duplicado: ' + id);
+      seenUrls.add(affiliate.href);
     }
     if (json.next_offset === null) {
       if (!seen.size) throw new Error('Catalogo publico vazio');
