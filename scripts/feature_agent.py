@@ -8,7 +8,10 @@ import shutil
 import sys
 from pathlib import Path
 
-from scripts.agent_propose import run_model, validate_proposal
+if __package__:
+    from .agent_propose import run_model, validate_proposal
+else:
+    from agent_propose import run_model, validate_proposal
 
 # Funcionalidades reais com testes reprodutiveis. A ordem define a prioridade.
 FEATURES = (
