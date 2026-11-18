@@ -10,14 +10,20 @@ class FeatureAgentPolicyTests(unittest.TestCase):
     def test_fallback_concreto_preserva_regras_e_libera_funcionalidades(self):
         search = Path("src/comparator_search.mjs").read_text(encoding="utf-8")
         result = verified_fallback("search-unicode-width", search)
-        self.assertIsNotNone(result)
-        self.assertIn('.normalize("NFKD")', result)
-        self.assertIn('export function normalizeProductSearch', result)
+        if '.normalize("NFKD")' in search:
+            self.assertIsNone(result, "Fallback nao deve alterar funcionalidade concluida")
+        else:
+            self.assertIsNotNone(result)
+            self.assertIn('.normalize("NFKD")', result)
+            self.assertIn('export function normalizeProductSearch', result)
         audit = Path("scripts/check-public-catalog.mjs").read_text(encoding="utf-8")
         result = verified_fallback("catalog-duplicate-affiliate-link", audit)
-        self.assertIsNotNone(result)
-        self.assertIn("seenUrls.add(affiliate.href)", result)
-        self.assertIn("affiliateDestinationForMarketplace", result)
+        if "seenUrls.add(affiliate.href)" in audit:
+            self.assertIsNone(result, "Fallback nao deve duplicar codigo ja integrado")
+        else:
+            self.assertIsNotNone(result)
+            self.assertIn("seenUrls.add(affiliate.href)", result)
+            self.assertIn("affiliateDestinationForMarketplace", result)
         self.assertIsNone(verified_fallback("outra-tarefa", audit))
 
     def test_controlador_executa_em_modo_script_no_runner(self):
@@ -25,7 +31,11 @@ class FeatureAgentPolicyTests(unittest.TestCase):
             [sys.executable, "scripts/feature_agent.py", "--next"],
             check=True, capture_output=True, text=True, timeout=10,
         )
-        self.assertIn("search-unicode-width|src/comparator_search.mjs|", result.stdout)
+        task = next_feature()
+        expected = "none" if task is None else "|".join(
+            task[key] for key in ("slug", "target", "test")
+        )
+        self.assertEqual(result.stdout.strip(), expected)
 
     def test_lista_fechada_e_arquivos_nao_sensiveis(self):
         names = [x['slug'] for x in FEATURES]
