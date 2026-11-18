@@ -18,7 +18,7 @@ class FeatureAgentPolicyTests(unittest.TestCase):
             feature_for('../../src/worker.mjs')
 
     def test_seleciona_primeira_tarefa_com_teste_ainda_nao_integrado(self):
-        with patch.object(Path, 'exists', side_effect=lambda path: str(path).endswith('search-unicode-width.test.mjs')):
+        with patch.object(Path, 'exists', side_effect=[True, False]):
             task = next_feature()
         self.assertEqual(task['slug'], 'catalog-duplicate-affiliate-link')
         with patch.object(Path, 'exists', return_value=True):
