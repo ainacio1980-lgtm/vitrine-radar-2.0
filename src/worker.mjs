@@ -11,6 +11,7 @@ import { couponForCatalogOffer, expireCoupon, listAdminCoupons, listCoupons, pub
 import { dailyCuration } from "./curation.mjs";
 import { addRadar } from "./radar_page.mjs";
 import shareCover from "./vitrine-radar-capa.jpg";
+import { previewShopeeProducts } from "./shopee_affiliate_api.mjs";
 
 const authHeaders = {
   "cache-control": "no-store",
@@ -144,7 +145,8 @@ async function logout(request, url, db) {
   return authJson({ ok: true }, 200, { "set-cookie": "vr_session=" + sessionCookie + "0" });
 }
 
-async function handleAdmin(request, url, db) {
+async function handleAdmin(request, url, env) {
+  const db = env.DB;
   const path = url.pathname;
   const isApi = path.startsWith("/api/admin/");
   const session = await getSession(db, request);
@@ -159,6 +161,26 @@ async function handleAdmin(request, url, db) {
   }
 
   if (request.method === "GET") {
+    if (path === "/api/admin/shopee-api/preview") {
+      if (!env.SHOPEE_APP_ID || !env.SHOPEE_API_SECRET) {
+        return authError("API Shopee nao configurada. Defina SHOPEE_APP_ID e SHOPEE_API_SECRET como secrets.", 503);
+      }
+      const keyword = url.searchParams.get("keyword") || "";
+      const page = Number(url.searchParams.get("page") ?? 1);
+      const limit = Number(url.searchParams.get("limit") ?? 10);
+      if (!keyword.trim() || keyword.length > 80 || !Number.isSafeInteger(page) || page < 1 ||
+          page > 3 || !Number.isSafeInteger(limit) || limit < 1 || limit > 20) {
+        return authError("Informe keyword, page (1-3) e limit (1-20) validos.", 400);
+      }
+      try {
+        const data = await previewShopeeProducts({
+          appId: env.SHOPEE_APP_ID, secret: env.SHOPEE_API_SECRET,
+        }, { keyword, page, limit });
+        return authJson(data);
+      } catch {
+        return authError("Consulta Shopee indisponivel. Confira permissoes e credenciais da Open API.", 502);
+      }
+    }
     if (path === "/api/admin/coupons") return authJson(await listAdminCoupons(db));
     if (path === "/api/admin/link-inbox") {
       const { results } = await db.prepare("SELECT id,marketplace,url,status,created_at FROM affiliate_link_inbox ORDER BY id DESC LIMIT 100").all();
@@ -488,7 +510,7 @@ export default {
     try {
       if (path === "/api/auth/login" && request.method === "POST") return await login(request, url, env);
       if (path === "/api/auth/logout" && request.method === "POST") return await logout(request, url, env.DB);
-      if (path === "/admin" || path === "/admin/" || path.startsWith("/api/admin/")) return await handleAdmin(request, url, env.DB);
+      if (path === "/admin" || path === "/admin/" || path.startsWith("/api/admin/")) return await handleAdmin(request, url, env);
       if (path === "/api/partner-stores" && request.method === "GET") {
         const {results}=await env.DB.prepare("SELECT marketplace,display_name,affiliate_url FROM partner_storefronts WHERE status='active' ORDER BY marketplace").all();
         return Response.json({stores:results.map(x=>({marketplace:x.marketplace,name:x.display_name,visit_url:'/lojas/'+(x.marketplace==='Mercado Livre'?'mercado-livre':x.marketplace.toLowerCase())}))},{headers:{'cache-control':'public,max-age=120','x-content-type-options':'nosniff'}});
