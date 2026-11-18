@@ -183,7 +183,15 @@ async function handleAdmin(request, url, db) {
     }
     if (path === "/api/admin/recovery" || path === "/api/admin/recovery.csv") {
       const audit = await recoveryAudit(db);
-      if (path === "/api/admin/recovery") return authJson({summary:audit.summary,notice:audit.notice});
+      if (path === "/api/admin/recovery") {
+        if (url.searchParams.get("ready") === "1") {
+          const ready = audit.offers.filter(o => o.ready_for_review).slice(0, 30)
+            .map(o => ({ id:o.id, title:o.title, merchant:o.merchant, status:o.status,
+              price_cents:o.price_cents, url:o.url }));
+          return authJson({summary:audit.summary, ready, notice:audit.notice});
+        }
+        return authJson({summary:audit.summary,notice:audit.notice});
+      }
       const columns = ["id","status","loja","produto","preco_centavos","foto","url_afiliado","bloqueios","apto_revisao"];
       const clean = value => {
         const s = String(value ?? "");

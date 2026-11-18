@@ -55,3 +55,16 @@ test('auditoria e CSV ficam atras da rota autenticada, sem publicar dados',()=>{
   assert.match(admin,/id="recovery-link"/);
   assert.match(admin,/api\/admin\/recovery\.csv/);
 });
+
+test('painel prioriza candidatas autenticadas sem divulgar estoque ou publicar automaticamente',()=>{
+  const worker=readFileSync(new URL('../src/worker.mjs',import.meta.url),'utf8');
+  const admin=readFileSync(new URL('../src/admin.mjs',import.meta.url),'utf8');
+  assert.match(worker, /url\.searchParams\.get\("ready"\) === "1"/);
+  assert.match(worker, /audit\.offers\.filter\(o => o\.ready_for_review\)\.slice\(0, 30\)/);
+  assert.match(worker, /if \(path === "\/api\/admin\/recovery"\)/);
+  assert.match(admin, /id="recovery-rows"/);
+  assert.match(admin, /api\/admin\/recovery\?ready=1/);
+  assert.match(admin, /row\.insertCell\(\)\.textContent = offer\.title/);
+  assert.match(admin, /link\.rel = 'noopener noreferrer'/);
+  assert.match(admin, /Os preços abaixo são os registrados no sistema/);
+});
