@@ -81,6 +81,10 @@ export function adminPage(csrf) {
       <span>Precisam de link afiliado: <strong id="recovery-link">—</strong></span>
     </div>
     <p><a href="/api/admin/recovery.csv" download>Baixar relatório de recuperação em CSV</a></p>
+    <h3>Prioridade: ofertas sem bloqueios estruturais</h3>
+    <p class="muted">Esses produtos ainda estão pausados ou pendentes. Os preços abaixo são os registrados no sistema, não uma confirmação da loja hoje.</p>
+    <div class="table"><table><thead><tr><th>Produto</th><th>Loja</th><th>Preço cadastrado</th><th>Conferir</th></tr></thead>
+      <tbody id="recovery-rows"><tr><td colspan="4">Carregando candidatos à revisão...</td></tr></tbody></table></div>
     <p class="muted">Antes de aprovar qualquer oferta, confirme manualmente preço, disponibilidade, modelo e elegibilidade do link no programa da loja.</p>
   </section>
 
@@ -671,12 +675,38 @@ export function adminPage(csrf) {
           Math.min(100, ((Number(data.approved) || 0) / target) * 100).toFixed(1).replace('.', ',') +
           '%). Faltam ' + Math.max(0, Number(data.remaining) || 0) + ' ofertas validadas.';
       }),
-      api('/api/admin/recovery').then(data => {
+      api('/api/admin/recovery?ready=1').then(data => {
         const totals = data.summary;
         byId('recovery-ready').textContent = totals.ready_for_review;
         byId('recovery-photo').textContent = totals.missing_photo;
         byId('recovery-price').textContent = totals.missing_price;
         byId('recovery-link').textContent = totals.invalid_affiliate_link;
+        const list = byId('recovery-rows');
+        list.replaceChildren();
+        for (const offer of data.ready || []) {
+          const row = list.insertRow();
+          row.insertCell().textContent = offer.title;
+          row.insertCell().textContent = offer.merchant;
+          row.insertCell().textContent = currency.format(offer.price_cents / 100);
+          const action = row.insertCell();
+          try {
+            const destination = new URL(offer.url);
+            if (destination.protocol === 'https:' && !destination.username &&
+                !destination.password && !destination.port && !destination.hash) {
+              const link = document.createElement('a');
+              link.href = destination.href;
+              link.target = '_blank';
+              link.rel = 'noopener noreferrer';
+              link.textContent = 'Ver na loja';
+              action.append(link);
+            }
+          } catch {}
+        }
+        if (!list.rows.length) {
+          const cell = list.insertRow().insertCell();
+          cell.colSpan = 4;
+          cell.textContent = 'Nenhuma oferta sem bloqueios estruturais.';
+        }
       }),
       api('/api/admin/operations').then(data => {
         for (const key of ['clicks', 'imports', 'jobs']) byId(key).textContent = data[key];
