@@ -23,7 +23,7 @@ test("assina o corpo exato com SHA256 sem enviar senha no corpo ou no header", a
       ", Timestamp=" + ts + ", Signature=" + digest);
     assert.ok(!JSON.stringify(init).includes(credentials.secret));
     return { ok: true, json: async () => ({ data: { valid: true } }) };
-  })));
+  }));
   assert.equal(called, 1);
   assert.deepEqual(data, { valid: true });
 });
