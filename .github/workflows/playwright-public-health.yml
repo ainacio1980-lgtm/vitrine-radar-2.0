@@ -1,0 +1,33 @@
+name: Playwright - Dash Financeiro e Vitrine Radar (gratuito)
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 11,17 * * 1-5'
+permissions:
+  contents: read
+concurrency:
+  group: playwright-public-health
+  cancel-in-progress: true
+jobs:
+  public-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar Playwright sem alterar dependencias do projeto
+        run: |
+          npm install --no-save --no-package-lock --ignore-scripts playwright@1.58.2
+          npx playwright install --with-deps chromium
+      - name: Verificar paginas e indicadores publicos (sem login)
+        run: node scripts/playwright-public-health.mjs
+      - name: Registrar resumo
+        if: always()
+        run: |
+          echo "### Testes públicos Playwright" >> "$GITHUB_STEP_SUMMARY"
+          echo "Dashboard Financeiro e Vitrine Radar: conferir o resultado da etapa de testes." >> "$GITHUB_STEP_SUMMARY"
+          echo "Sem autenticação, sem acesso a dados privados, sem deploy e sem pagamentos." >> "$GITHUB_STEP_SUMMARY"
