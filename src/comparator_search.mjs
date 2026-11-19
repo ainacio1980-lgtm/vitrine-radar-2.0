@@ -5,6 +5,10 @@ export function normalizeProductSearch(text) {
     .replace(/[^a-z0-9]+/g, " ")
     .replace(/\b(black|preta)\b/g, "preto")
     .replace(/\b(white|branca)\b/g, "branco")
+    .replace(/\bblue\b/g, "azul")
+    .replace(/\bgreen\b/g, "verde")
+    .replace(/\bred\b/g, "vermelho")
+    .replace(/\bpink\b/g, "rosa")
     .replace(/\b(gray|grey)\b/g, "cinza")
     .replace(/\bsilver\b/g, "prata")
     .replace(/\b(gold|golden)\b/g, "dourado")
@@ -19,7 +23,7 @@ export function productSearchTerms(query, minimumLength = 2) {
   return {
     exact: tokens.map(token => ` ${token} `),
     // A complete capacity or measurement is specific. A partially typed word can match a prefix.
-    prefixes: tokens.map(token => /^(?:\d+(?:gb|tb|mb|mah|hz|ml|mg|kg|cm|mm)|[a-z]{1,5}\d+[a-z0-9]*|preto|branco|azul|verde|rosa|cinza|prata|dourado|pro|ultra|plus|max)$/.test(token) ? ` ${token} ` : ` ${token}`),
+    prefixes: tokens.map(token => /^(?:\d+(?:gb|tb|mb|mah|hz|ml|mg|kg|cm|mm)|[a-z]{1,5}\d+[a-z0-9]*|preto|branco|azul|verde|rosa|vermelho|cinza|prata|dourado|pro|ultra|plus|max)$/.test(token) ? ` ${token} ` : ` ${token}`),
     phrase: ` ${normalized} `,
     barcode: /^\d+$/.test(normalized) ? normalized : "",
   };
