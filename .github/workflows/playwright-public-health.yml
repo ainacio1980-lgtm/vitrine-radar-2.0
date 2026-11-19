@@ -1,6 +1,11 @@
 name: Playwright - Dash Financeiro e Vitrine Radar (gratuito)
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/playwright-public-health.mjs'
+      - '.github/workflows/playwright-public-health.yml'
   schedule:
     - cron: '23 11,17 * * 1-5'
 permissions:
