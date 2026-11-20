@@ -112,7 +112,9 @@ test('agente registra falhas reais uma vez e encerra incidentes apos recuperacao
 test('agente de funcionalidades usa fila fechada e testes de aceite nao editaveis', () => {
   const yaml=workflow('feature-agent.yml');
   const script=readFileSync(new URL('../scripts/feature_agent.py',import.meta.url),'utf8');
-  assert.match(yaml,/cron: '43 \*\/6 \* \* \*'/);
+  // O usuario cancelou a execucao recorrente; impedir reintroducao acidental.
+  assert.doesNotMatch(yaml,/^\s*schedule:/m);
+  assert.match(yaml,/workflow_dispatch:/);
   assert.match(yaml,/python3 scripts\/feature_agent\.py --next/);
   assert.match(yaml,/python3 scripts\/feature_agent\.py --implement/);
   assert.match(yaml,/npm run verify/);
